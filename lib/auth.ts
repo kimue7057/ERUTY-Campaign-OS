@@ -48,6 +48,10 @@ export async function verifyAssertion(
 export async function authenticate(headers: Headers): Promise<Actor> {
   let subject: string;
   if (demoEnabled()) subject = "demo-admin";
+  else if (process.env.AUTH_MODE === "supabase") {
+    const { supabaseSubject } = await import("./supabase-auth");
+    subject = await supabaseSubject();
+  }
   else {
     ensure(
       process.env.AUTH_MODE === "proxy",

@@ -1,0 +1,12 @@
+.env*
+!.env.example
+.local-postgres
+node_modules
+.next*
+.git
+test-results
+playwright-report
+docs/screenshots
+private-data
+evidence
+exports

@@ -10,6 +10,8 @@ export async function api<T>(
     body: data === undefined ? undefined : JSON.stringify(data),
   });
   const body = await response.json();
+  if (response.status === 401 && !path.startsWith("auth/"))
+    window.location.replace("/login");
   if (!response.ok)
     throw new Error(body.error?.message ?? "요청을 처리할 수 없습니다.");
   return body.data as T;
