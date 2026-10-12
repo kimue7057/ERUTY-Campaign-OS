@@ -18,6 +18,9 @@ export type Strategy = {
   name: string;
   sortOrder: number;
   revision: number;
+  planStart: string | null;
+  planEnd: string | null;
+  budgetCeilingKrw: string | null;
 };
 export type Work = {
   id: string;

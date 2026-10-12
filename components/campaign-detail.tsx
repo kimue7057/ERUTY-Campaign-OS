@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { api } from "./api";
 import { EntityForm, DeleteButton, type Field } from "./entity-form";
 import { campaignFields, workFields } from "./campaign-fields";
+import { StrategyPlan } from "./strategy-plan";
 import {
   krw,
   day,
@@ -100,16 +101,22 @@ export default function CampaignDetail({
       path: `campaigns/${id}/strategies${strategy ? `/${strategy.id}` : ""}`,
       fields: [
         { key: "name", label: "전략명" },
+        { key: "planStart", label: "전략 시작일", type: "date", nullable: true },
+        { key: "planEnd", label: "전략 종료일", type: "date", nullable: true },
+        { key: "budgetCeilingKrw", label: "전략 예산 한도 (원)", type: "money", nullable: true },
         { key: "sortOrder", label: "정렬 순서", type: "number" },
       ],
       editing: !!strategy,
       values: strategy
         ? {
             name: strategy.name,
+            planStart: strategy.planStart ? day(strategy.planStart) : null,
+            planEnd: strategy.planEnd ? day(strategy.planEnd) : null,
+            budgetCeilingKrw: strategy.budgetCeilingKrw,
             sortOrder: strategy.sortOrder,
             revision: strategy.revision,
           }
-        : { name: "", sortOrder: c.strategies.length },
+        : { name: "", sortOrder: c.strategies.length, planStart: day(c.planStart), planEnd: day(c.planEnd), budgetCeilingKrw: null },
     });
   const editWork = (
     strategyId: string,
@@ -117,6 +124,7 @@ export default function CampaignDetail({
     item?: Work,
   ) => {
     const activity = !parentId;
+    const strategy = c.strategies.find(s => s.id === strategyId);
     setEditor({
       title: item
         ? activity
@@ -135,8 +143,8 @@ export default function CampaignDetail({
         name: item?.name ?? "",
         ownerId: item?.ownerId ?? null,
         status: item?.status ?? "PLANNED",
-        plannedStart: day(item?.plannedStart ?? c.planStart),
-        plannedEnd: day(item?.plannedEnd ?? c.planEnd),
+        plannedStart: day(item?.plannedStart ?? strategy?.planStart ?? c.planStart),
+        plannedEnd: day(item?.plannedEnd ?? strategy?.planEnd ?? c.planEnd),
         sortOrder: item?.sortOrder ?? c.workItems.length,
         ...(item ? { revision: item.revision } : {}),
         ...(activity
@@ -298,7 +306,7 @@ export default function CampaignDetail({
               </p>
             </div>
             <div className="metric">
-              <span>활동 계획 예산</span>
+              <span>활동 배정 예산</span>
               <strong className="amount">
                 {krw(c.summary.allocatedPlanKrw)}
               </strong>
@@ -316,6 +324,7 @@ export default function CampaignDetail({
             </div>
           </div>
           <div className="overview-strip">
+            <div>캠페인 남은 예산 <strong>{krw(c.summary.unallocatedPlanKrw)}</strong>{c.summary.overBudget && <span className="badge warning">한도 초과</span>}</div>
             <div>
               <span className="dot green" />
               활동 <strong>{c.summary.activityCount}</strong>
@@ -414,6 +423,7 @@ export default function CampaignDetail({
                       </div>
                     )}
                   </div>
+                  <StrategyPlan strategy={strategy} workItems={c.workItems} campaign={c} />
                   {activities.length ? (
                     <div
                       className="table-scroll"
@@ -469,6 +479,7 @@ export default function CampaignDetail({
       )}
       {tab === "schedule" && (
         <>
+          <section className="panel"><h2>전략별 계획 기간</h2>{c.strategies.map(strategy => <div key={strategy.id}><h3>{strategy.name}</h3><StrategyPlan strategy={strategy} workItems={c.workItems} campaign={c} /></div>)}</section>
           <aside className="note">
             <strong>현재 계획 일정</strong>
             <p>
@@ -556,7 +567,7 @@ export default function CampaignDetail({
               </p>
             </div>
             <div className="metric">
-              <span>활동 계획 합계</span>
+              <span>활동에 배정한 예산</span>
               <strong className="amount">
                 {krw(c.summary.allocatedPlanKrw)}
               </strong>
@@ -565,7 +576,7 @@ export default function CampaignDetail({
               className={`metric ${c.summary.overBudget ? "over-budget" : ""}`}
             >
               <span>
-                {c.summary.overBudget ? "예산 한도 초과" : "미배정 계획 예산"}
+                {c.summary.overBudget ? "예산 한도 초과" : "캠페인 남은 예산"}
               </span>
               <strong className="amount">
                 {krw(c.summary.unallocatedPlanKrw)}
@@ -573,6 +584,7 @@ export default function CampaignDetail({
               <p>한도 − 활동 계획 합계</p>
             </div>
           </div>
+          <section className="panel"><h2>전략별 예산 한도 · 잔여</h2>{c.strategies.map(strategy => <div key={strategy.id}><h3>{strategy.name}</h3><StrategyPlan strategy={strategy} workItems={c.workItems} campaign={c} /></div>)}</section>
           <aside className="note">
             <strong>기초 예산 계획</strong>
             <p>

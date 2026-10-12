@@ -135,6 +135,28 @@ afterAll(async () => {
 });
 
 describe("실제 PostgreSQL / Prisma CRUD", () => {
+  it("전략 기간·한도 저장 후 활동 배정·수정·삭제는 캠페인 잔여에서 차감·복원한다", async () => {
+    const campaign = await svc.saveCampaign(admin, { ...campaignInput(`TEST 전략 계획 ${runId}`), budgetCeilingKrw: "1000000" });
+    let strategy = await svc.saveStrategy(admin, campaign.id, { name: "TEST 계획 전략", sortOrder: 0, planStart: "2026-10-02", planEnd: "2026-10-20", budgetCeilingKrw: "500000" });
+    expect((await svc.detail(admin, campaign.id)).summary.unallocatedPlanKrw).toBe("1000000");
+    strategy = await svc.saveStrategy(admin, campaign.id, { name: "TEST 계획 전략 수정", sortOrder: 0, revision: strategy.revision }, strategy.id);
+    expect(strategy.planStart?.toISOString()).toBe("2026-10-02T00:00:00.000Z");
+    expect(strategy.budgetCeilingKrw).toBe(500000n);
+    await expect(db.strategy.update({ where: { id: strategy.id }, data: { budgetCeilingKrw: -1n } })).rejects.toThrow();
+    await expect(db.strategy.update({ where: { id: strategy.id }, data: { planEnd: toDate("2026-10-01") } })).rejects.toThrow();
+    const input = { ...workInput("TEST 예산 차감"), strategyId: strategy.id, ownerId: admin.id, plannedBudgetKrw: "200000" };
+    let activity = await svc.saveWork(admin, campaign.id, input);
+    expect((await svc.detail(admin, campaign.id)).summary.unallocatedPlanKrw).toBe("800000");
+    activity = await svc.saveWork(admin, campaign.id, { ...input, plannedBudgetKrw: "300000", revision: activity.revision }, activity.id);
+    const result = await svc.detail(admin, campaign.id);
+    expect(result.budgetCeilingKrw).toBe(1000000n);
+    expect(result.summary.unallocatedPlanKrw).toBe("700000");
+    expect(result.strategies[0].budgetCeilingKrw).toBe(500000n);
+    await svc.remove(admin, "work", activity.id, activity.revision, campaign.id);
+    expect((await svc.detail(admin, campaign.id)).summary.unallocatedPlanKrw).toBe("1000000");
+    await svc.remove(admin, "strategy", strategy.id, strategy.revision, campaign.id);
+    await svc.remove(admin, "campaign", campaign.id, campaign.revision, campaign.id);
+  });
   it("활동 생성 후 조회, 독립 활동과 원화 저장", async () => {
     const res = await request(
       "POST",
