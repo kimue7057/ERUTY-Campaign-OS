@@ -1,0 +1,197 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum WorkStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  ON_HOLD
+}
+
+enum WorkKind {
+  ACTIVITY
+  SUBTASK
+}
+
+enum VatPolicy {
+  INCLUDED
+  EXCLUDED
+}
+
+enum SystemRole {
+  ADMIN
+  MEMBER
+}
+
+enum CampaignRole {
+  EDITOR
+  VIEWER
+}
+
+model AppUser {
+  id             String           @id @default(uuid()) @db.Uuid
+  authSubject    String           @unique
+  name           String
+  role           SystemRole       @default(MEMBER)
+  active         Boolean          @default(true)
+  isDemo         Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  ownedCampaigns Campaign[]
+  workItems      WorkItem[]
+  memberships    CampaignMember[]
+}
+
+model Brand {
+  id        String         @id @default(uuid()) @db.Uuid
+  name      String         @unique
+  isDemo    Boolean        @default(false)
+  revision  Int            @default(1)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  countries BrandCountry[]
+}
+
+model BrandCountry {
+  id          String     @id @default(uuid()) @db.Uuid
+  brandId     String     @db.Uuid
+  countryCode String     @db.VarChar(2)
+  countryName String
+  revision    Int        @default(1)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  brand       Brand      @relation(fields: [brandId], references: [id], onDelete: Restrict)
+  campaigns   Campaign[]
+
+  @@unique([brandId, countryCode])
+}
+
+model Campaign {
+  id                    String           @id @default(uuid()) @db.Uuid
+  brandCountryId        String           @db.Uuid
+  name                  String
+  ownerId               String?          @db.Uuid
+  planStart             DateTime         @db.Date
+  planEnd               DateTime         @db.Date
+  status                CampaignStatus   @default(DRAFT)
+  budgetCeilingKrw      BigInt           @default(0)
+  targetNetSalesKrw     BigInt           @default(0)
+  targetErutyRevenueKrw BigInt           @default(0)
+  vatPolicy             VatPolicy
+  isDemo                Boolean          @default(false)
+  revision              Int              @default(1)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  brandCountry          BrandCountry     @relation(fields: [brandCountryId], references: [id], onDelete: Restrict)
+  owner                 AppUser?         @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  strategies            Strategy[]
+  workItems             WorkItem[]
+  budgetLines           BudgetLine[]
+  members               CampaignMember[]
+
+  @@index([brandCountryId])
+}
+
+model CampaignMember {
+  campaignId String       @db.Uuid
+  userId     String       @db.Uuid
+  role       CampaignRole
+  campaign   Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user       AppUser      @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@id([campaignId, userId])
+  @@index([userId])
+}
+
+model Strategy {
+  id         String     @id @default(uuid()) @db.Uuid
+  campaignId String     @db.Uuid
+  name       String
+  sortOrder  Int        @default(0)
+  revision   Int        @default(1)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  campaign   Campaign   @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  workItems  WorkItem[]
+
+  @@unique([id, campaignId])
+  @@index([campaignId, sortOrder])
+}
+
+model WorkItem {
+  id           String       @id @default(uuid()) @db.Uuid
+  campaignId   String       @db.Uuid
+  strategyId   String       @db.Uuid
+  parentId     String?      @db.Uuid
+  parentKind   WorkKind     @default(ACTIVITY)
+  kind         WorkKind
+  name         String
+  ownerId      String?      @db.Uuid
+  status       WorkStatus   @default(PLANNED)
+  plannedStart DateTime     @db.Date
+  plannedEnd   DateTime     @db.Date
+  actualStart  DateTime?    @db.Date
+  actualEnd    DateTime?    @db.Date
+  sortOrder    Int          @default(0)
+  revision     Int          @default(1)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  campaign     Campaign     @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  strategy     Strategy     @relation(fields: [strategyId, campaignId], references: [id, campaignId], onDelete: Restrict, onUpdate: Restrict)
+  parent       WorkItem?    @relation("WorkHierarchy", fields: [parentId, campaignId, strategyId, parentKind], references: [id, campaignId, strategyId, kind], onDelete: Restrict, onUpdate: Restrict)
+  children     WorkItem[]   @relation("WorkHierarchy")
+  owner        AppUser?     @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  budgetLines  BudgetLine[]
+
+  @@unique([id, campaignId, strategyId, kind])
+  @@unique([id, campaignId, kind])
+  @@index([campaignId, strategyId, sortOrder])
+  @@index([parentId])
+  @@index([ownerId])
+}
+
+// PR 1: basic activity plans. Subtask partitioning and common-cost editors are PR 3.
+model BudgetLine {
+  id               String    @id @default(uuid()) @db.Uuid
+  campaignId       String    @db.Uuid
+  activityId       String?   @db.Uuid
+  activityKind     WorkKind  @default(ACTIVITY)
+  category         String    @default("INITIAL")
+  description      String
+  plannedAmountKrw BigInt    @default(0)
+  version          Int       @default(1)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  campaign         Campaign  @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  activity         WorkItem? @relation(fields: [activityId, campaignId, activityKind], references: [id, campaignId, kind], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([activityId, category])
+  @@index([campaignId])
+}
+
+model AuditEvent {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String   @db.Uuid
+  entityType String
+  entityId   String   @db.Uuid
+  action     String
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
+}
