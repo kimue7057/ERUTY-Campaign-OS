@@ -61,7 +61,9 @@ npm run dev
 
 ### 초기 실패와 수정
 
-- Linux CI의 첫 npm ci가 선택적 WASM 의존성 누락으로 실패해, node_modules가 없는 환경에서 잠금 파일을 다시 생성했다. Linux/x64 npm ci dry-run으로 잠금 파일 완전성을 확인하고 같은 PR에서 CI를 재실행한다.
+- 깨끗한 설치에서 ESLint 9 지원 종료 경고를 확인해, peer 호환성을 검증한 ESLint 10.12.0 / typescript-eslint 8.71.1 / React hooks 7.1.1로 갱신했다. ESLint 10으로 전체 소스 lint 통과. Node 최소 버전은 22.13으로 맞췄다.
+
+- Linux CI의 첫 npm ci가 선택적 WASM 의존성 누락으로 실패해, node_modules가 없는 환경에서 잠금 파일을 다시 생성했다. Linux/x64 npm ci dry-run으로 잠금 파일 완전성을 확인하고 같은 PR의 Linux CI에서 설치·마이그레이션·타입·린트·32개 테스트·빌드·audit가 모두 통과했다. 깨끗한 Windows npm ci도 통과했다.
 
 - Google Drive 파일 시스템에서 npm tar 쓰기 실패 → 로컬 체크아웃으로 검증 환경 이동.
 - Windows Application Control이 native SWC를 차단 → 공식 WASM compiler 사용. 보안 정책 변경 없음.
@@ -161,4 +163,5 @@ npm run dev
 - `tests/unit/domain.test.ts`
 - `tsconfig.json`
 - `vitest.config.mts`
+
 

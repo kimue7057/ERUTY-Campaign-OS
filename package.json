@@ -39,18 +39,18 @@
     "@types/react-dom": "^19.0.0",
     "autoprefixer": "^10.4.0",
     "embedded-postgres": "18.4.0-beta.17",
-    "eslint": "^9.39.0",
-    "eslint-plugin-react-hooks": "^7.0.0",
+    "eslint": "10.12.0",
+    "eslint-plugin-react-hooks": "7.1.1",
     "postcss": "8.5.29",
     "prisma": "7.10.0",
     "tailwindcss": "4.3.3",
     "tsx": "^4.20.6",
     "typescript": "~5.9.3",
-    "typescript-eslint": "^8.46.0",
+    "typescript-eslint": "8.71.1",
     "vitest": "5.0.3"
   },
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22.13.0"
   },
   "overrides": {
     "postcss": "8.5.29",
