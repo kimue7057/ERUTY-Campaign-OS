@@ -291,6 +291,12 @@ export async function saveStrategy(
 ) {
   await authorizeCampaign(actor, campaignId, true);
   const { revision, ...data } = strategySchema.parse(input);
+  const fields = {
+    ...data,
+    planStart: data.planStart === undefined ? undefined : data.planStart === null ? null : toDate(data.planStart),
+    planEnd: data.planEnd === undefined ? undefined : data.planEnd === null ? null : toDate(data.planEnd),
+    budgetCeilingKrw: data.budgetCeilingKrw === undefined ? undefined : data.budgetCeilingKrw === null ? null : BigInt(data.budgetCeilingKrw),
+  };
   return transaction(async (tx) => {
     const before = id
       ? await tx.strategy.findFirst({ where: { id, campaignId } })
@@ -302,9 +308,9 @@ export async function saveStrategy(
     const after = id
       ? await tx.strategy.update({
           where: { id },
-          data: { ...data, revision: { increment: 1 } },
+          data: { ...fields, revision: { increment: 1 } },
         })
-      : await tx.strategy.create({ data: { ...data, campaignId } });
+      : await tx.strategy.create({ data: { ...fields, campaignId } });
     await audit(
       tx,
       actor,

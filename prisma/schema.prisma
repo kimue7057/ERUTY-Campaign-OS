@@ -121,6 +121,9 @@ model Strategy {
   id         String     @id @default(uuid()) @db.Uuid
   campaignId String     @db.Uuid
   name       String
+  planStart  DateTime?  @db.Date
+  planEnd    DateTime?  @db.Date
+  budgetCeilingKrw BigInt?
   sortOrder  Int        @default(0)
   revision   Int        @default(1)
   createdAt  DateTime   @default(now())

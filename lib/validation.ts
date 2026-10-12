@@ -68,8 +68,14 @@ export const campaignSchema = z
     path: ["planEnd"],
   });
 export const strategySchema = z
-  .object({ name, sortOrder: z.number().int().min(0).max(100000), revision })
-  .strict();
+  .object({ name, sortOrder: z.number().int().min(0).max(100000), revision,
+    planStart: dateSchema.nullable().optional(),
+    planEnd: dateSchema.nullable().optional(),
+    budgetCeilingKrw: moneySchema.nullable().optional(),
+  })
+  .strict()
+  .refine(v => (v.planStart === undefined) === (v.planEnd === undefined) && (v.planStart === null) === (v.planEnd === null), { message: "전략 시작일과 종료일을 함께 입력하거나 함께 비워 주세요.", path: ["planEnd"] })
+  .refine(v => !v.planStart || !v.planEnd || v.planStart <= v.planEnd, { message: "전략 종료일은 시작일보다 빠를 수 없습니다.", path: ["planEnd"] });
 export const workSchema = z
   .object({
     strategyId: idSchema,
