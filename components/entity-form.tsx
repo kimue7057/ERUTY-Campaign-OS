@@ -15,7 +15,7 @@ type Props = {
   path: string;
   fields: Field[];
   values: Record<string, unknown>;
-  onSaved: (value: { id: string }) => void;
+  onSaved: (value: { id: string }) => void | Promise<unknown>;
   onCancel: () => void;
   editing?: boolean;
 };
@@ -35,7 +35,12 @@ export function EntityForm({
     <section className="editor" aria-label={title}>
       <div className="section-head">
         <h2>{title}</h2>
-        <button type="button" className="quiet" onClick={onCancel}>
+        <button
+          type="button"
+          className="quiet"
+          disabled={busy}
+          onClick={onCancel}
+        >
           닫기
         </button>
       </div>
@@ -57,7 +62,7 @@ export function EntityForm({
                   : value;
           }
           try {
-            onSaved(
+            await onSaved(
               await api<{ id: string }>(path, editing ? "PATCH" : "POST", data),
             );
           } catch (err) {
@@ -79,7 +84,7 @@ export function EntityForm({
                 <select
                   id={`${id}-${f.key}`}
                   name={f.key}
-                  disabled={f.disabled}
+                  disabled={busy || f.disabled}
                   required={!f.nullable}
                   defaultValue={String(values[f.key] ?? "")}
                 >
@@ -96,7 +101,7 @@ export function EntityForm({
                 <input
                   id={`${id}-${f.key}`}
                   name={f.key}
-                  disabled={f.disabled}
+                  disabled={busy || f.disabled}
                   required={!f.nullable}
                   type={
                     f.type === "date"
@@ -148,11 +153,13 @@ export function DeleteButton({
   revision,
   name,
   onDeleted,
+  disabled = false,
 }: {
   path: string;
   revision: number;
   name: string;
   onDeleted: () => void | Promise<unknown>;
+  disabled?: boolean;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState("");
@@ -161,6 +168,7 @@ export function DeleteButton({
     <span className="delete-control">
       {!confirming ? (
         <button
+          disabled={disabled}
           className="quiet danger"
           onClick={() => setConfirming(true)}
           aria-label={`${name} 삭제`}
@@ -173,7 +181,7 @@ export function DeleteButton({
           <button
             className="quiet danger"
             aria-label={`${name} 삭제 확인`}
-            disabled={busy}
+            disabled={busy || disabled}
             onClick={async () => {
               setBusy(true);
               setError("");

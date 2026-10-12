@@ -46,6 +46,7 @@ export default function BrandManager() {
         </div>
         {admin && (
           <button
+            disabled={!!editor}
             className="primary"
             onClick={() =>
               setEditor({
@@ -70,9 +71,9 @@ export default function BrandManager() {
           key={`${editor.path}-${editor.title}`}
           {...editor}
           onCancel={() => setEditor(undefined)}
-          onSaved={() => {
+          onSaved={async () => {
+            await load();
             setEditor(undefined);
-            load();
           }}
         />
       )}
@@ -92,6 +93,7 @@ export default function BrandManager() {
               {admin && (
                 <div className="row-actions">
                   <button
+                    disabled={!!editor}
                     className="quiet"
                     aria-label={`${brand.name} 수정`}
                     onClick={() =>
@@ -107,6 +109,7 @@ export default function BrandManager() {
                     수정
                   </button>
                   <DeleteButton
+                    disabled={!!editor}
                     path={`brands/${brand.id}`}
                     revision={brand.revision}
                     name={brand.name}
@@ -127,6 +130,7 @@ export default function BrandManager() {
                     {admin && (
                       <div className="row-actions">
                         <button
+                          disabled={!!editor}
                           className="quiet"
                           aria-label={`${c.countryName} 수정`}
                           onClick={() =>
@@ -147,6 +151,7 @@ export default function BrandManager() {
                           수정
                         </button>
                         <DeleteButton
+                          disabled={!!editor}
                           path={`brand-countries/${c.id}`}
                           revision={c.revision}
                           name={c.countryName}
@@ -159,6 +164,7 @@ export default function BrandManager() {
             </ul>
             {admin && (
               <button
+                disabled={!!editor}
                 className="secondary full"
                 onClick={() =>
                   setEditor({

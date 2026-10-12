@@ -152,7 +152,44 @@ test("캠페인·전략·활동·선택적 세부 작업 생성 수정 조회 �
     .getByRole("button", { name: "독립 활동 세부 작업 추가", exact: true })
     .click();
   await page.getByLabel("세부 작업명", { exact: true }).fill("선택적 작업");
+  // Hold a committed save response so edit/save races are deterministic.
+  let releaseSave!: () => void;
+  const heldSave = new Promise<void>((resolve) => {
+    releaseSave = resolve;
+  });
+  const workCreatePath = "**/api/campaigns/*/work-items";
+  await page.route(workCreatePath, async (route) => {
+    if (
+      route.request().method() === "POST" &&
+      route.request().postDataJSON().kind === "SUBTASK"
+    ) {
+      const response = await route.fetch();
+      await heldSave;
+      await route.fulfill({ response });
+    } else await route.continue();
+  });
   await page.getByRole("button", { name: "저장", exact: true }).click();
+  try {
+    await expect(
+      page
+        .locator(".editor")
+        .getByRole("button", { name: "저장 중…", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "독립 활동 수정", exact: true }),
+    ).toBeDisabled();
+    await expect(
+      page
+        .locator(".editor")
+        .getByRole("button", { name: "닫기", exact: true }),
+    ).toBeDisabled();
+  } finally {
+    releaseSave();
+  }
+  await expect(
+    page.getByRole("row").filter({ hasText: "선택적 작업" }),
+  ).toBeVisible();
+  await page.unroute(workCreatePath);
   await expect(
     page.locator(".metric").filter({ hasText: "활동 계획 예산" }),
   ).toContainText("3,500,000원");

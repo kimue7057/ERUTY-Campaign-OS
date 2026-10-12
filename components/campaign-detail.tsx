@@ -188,6 +188,7 @@ export default function CampaignDetail({
           <td>
             <div className="row-actions">
               <button
+                disabled={!!editor}
                 className="quiet"
                 aria-label={`${item.name} 수정`}
                 onClick={() => editWork(item.strategyId, item.parentId, item)}
@@ -196,6 +197,7 @@ export default function CampaignDetail({
               </button>
               {item.kind === "ACTIVITY" && (
                 <button
+                  disabled={!!editor}
                   className="quiet"
                   aria-label={`${item.name} 세부 작업 추가`}
                   onClick={() => editWork(item.strategyId, item.id)}
@@ -204,6 +206,7 @@ export default function CampaignDetail({
                 </button>
               )}
               <DeleteButton
+                disabled={!!editor}
                 path={`campaigns/${id}/work-items/${item.id}`}
                 revision={item.revision}
                 name={item.name}
@@ -244,7 +247,11 @@ export default function CampaignDetail({
           </p>
         </div>
         {c.canEdit && (
-          <button className="secondary" onClick={editCampaign}>
+          <button
+            disabled={!!editor}
+            className="secondary"
+            onClick={editCampaign}
+          >
             캠페인 수정
           </button>
         )}
@@ -273,9 +280,9 @@ export default function CampaignDetail({
         <EntityForm
           key={`${editor.path}-${editor.title}`}
           {...editor}
-          onSaved={() => {
+          onSaved={async () => {
+            await load();
             setEditor(undefined);
-            load();
           }}
           onCancel={() => setEditor(undefined)}
         />
@@ -335,7 +342,11 @@ export default function CampaignDetail({
               </p>
             </div>
             {c.canEdit && (
-              <button className="primary" onClick={() => editStrategy()}>
+              <button
+                disabled={!!editor}
+                className="primary"
+                onClick={() => editStrategy()}
+              >
                 + 전략 추가
               </button>
             )}
@@ -378,6 +389,7 @@ export default function CampaignDetail({
                     {c.canEdit && (
                       <div className="row-actions">
                         <button
+                          disabled={!!editor}
                           className="secondary compact"
                           aria-label={`${strategy.name} 활동 추가`}
                           onClick={() => editWork(strategy.id, null)}
@@ -385,6 +397,7 @@ export default function CampaignDetail({
                           + 활동 추가
                         </button>
                         <button
+                          disabled={!!editor}
                           className="quiet"
                           aria-label={`${strategy.name} 수정`}
                           onClick={() => editStrategy(strategy)}
@@ -392,6 +405,7 @@ export default function CampaignDetail({
                           수정
                         </button>
                         <DeleteButton
+                          disabled={!!editor}
                           path={`campaigns/${id}/strategies/${strategy.id}`}
                           revision={strategy.revision}
                           name={strategy.name}
@@ -439,6 +453,7 @@ export default function CampaignDetail({
           {c.canEdit && (
             <div className="campaign-delete">
               <DeleteButton
+                disabled={!!editor}
                 path={`campaigns/${id}`}
                 revision={c.revision}
                 name={c.name}

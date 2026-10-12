@@ -61,6 +61,8 @@ npm run dev
 
 ### 초기 실패와 수정
 
+- Linux CI 반복 검증에서 이전 저장 콜백이 새 편집 화면을 닫는 경합을 발견했다. 저장과 최신 목록 조회가 끝날 때까지 폼/다른 편집·삭제를 잠그고, 저장 응답을 의도적으로 지연하는 E2E 회귀 검증을 추가했다. 회귀 검증 포함 브라우저 3개 통과.
+
 - 깨끗한 설치에서 ESLint 9 지원 종료 경고를 확인해, peer 호환성을 검증한 ESLint 10.12.0 / typescript-eslint 8.71.1 / React hooks 7.1.1로 갱신했다. ESLint 10으로 전체 소스 lint 통과. Node 최소 버전은 22.13으로 맞췄다.
 
 - Linux CI의 첫 npm ci가 선택적 WASM 의존성 누락으로 실패해, node_modules가 없는 환경에서 잠금 파일을 다시 생성했다. Linux/x64 npm ci dry-run으로 잠금 파일 완전성을 확인하고 같은 PR의 Linux CI에서 설치·마이그레이션·타입·린트·32개 테스트·빌드·audit가 모두 통과했다. 깨끗한 Windows npm ci도 통과했다.
@@ -163,5 +165,3 @@ npm run dev
 - `tests/unit/domain.test.ts`
 - `tsconfig.json`
 - `vitest.config.mts`
-
-
