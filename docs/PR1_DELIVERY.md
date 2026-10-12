@@ -61,6 +61,8 @@ npm run dev
 
 ### 초기 실패와 수정
 
+- Linux CI의 첫 npm ci가 선택적 WASM 의존성 누락으로 실패해, node_modules가 없는 환경에서 잠금 파일을 다시 생성했다. Linux/x64 npm ci dry-run으로 잠금 파일 완전성을 확인하고 같은 PR에서 CI를 재실행한다.
+
 - Google Drive 파일 시스템에서 npm tar 쓰기 실패 → 로컬 체크아웃으로 검증 환경 이동.
 - Windows Application Control이 native SWC를 차단 → 공식 WASM compiler 사용. 보안 정책 변경 없음.
 - 원화 형식 검증 뒤 BigInt 변환에서 예외 → 형식/길이 검사를 먼저 적용해 소수·지수 입력도 한국어 검증 오류로 처리.
@@ -159,3 +161,4 @@ npm run dev
 - `tests/unit/domain.test.ts`
 - `tsconfig.json`
 - `vitest.config.mts`
+
