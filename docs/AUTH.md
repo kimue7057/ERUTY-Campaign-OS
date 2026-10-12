@@ -10,7 +10,7 @@ PR 1은 인증 프록시 계약을 제공한다. Supabase/Vercel 배포 준비 �
 - Auth 로그인 성공 후 내부 등록이 없으면 403을 반환하고 로컬 세션을 정리한다. 업무 데이터 요청에서 401이 오면 로그인 화면으로 이동한다.
 - 쿠키 인증 쓰기 요청은 `APP_BASE_URL`과 일치하는 Origin이 필수다. 로그인·로그아웃은 JSON만 받는다. 모든 인증 API 응답은 `no-store`다.
 - Supabase Auth에 확인된 계정을 만든 후 관리자가 `npx tsx scripts/register-supabase-user.ts --id AUTH_UUID --name 표시이름 --role ADMIN`으로 최초 계정을 등록한다. 관리자 연결 문자열은 DIRECT_URL로 별도 주입한다. 기존 계정/권한은 덮어쓰지 않는다. 일반 직원은 MEMBER로 등록하고 캠페인 소속을 별도로 설정한다.
-- Supabase Data API에는 업무 데이터 접근 정책이 없다. 9개 테이블의 RLS를 활성화하고 anon/authenticated 권한을 회수한다. Prisma 서버 연결만 데이터에 접근하며, 운영에서는 Data API 자체를 비활성화하는 설정도 적용한다.
+- Supabase Data API의 브라우저 역할에는 업무 데이터 접근 정책이 없다. 9개 테이블의 RLS를 활성화하고 anon/authenticated 권한을 회수한다. 별도 eruty_app 서버 역할에만 허용 정책과 제한된 DML 권한을 부여한다. 플랫폼 Data API 비활성화 설정도 운영자가 별도로 관리한다.
 
 ## 운영 접속
 

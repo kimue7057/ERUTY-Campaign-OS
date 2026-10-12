@@ -4,7 +4,7 @@
 
 ## 상태
 
-Supabase `KIMUE_PRIVATE`의 `eruty-campaign-os` 프로젝트(서울, PostgreSQL 17.11)와 Vercel `eruty1/eruty-campaign-os` 프로젝트(서울 함수, Node 24)를 연결했다. 운영 DB에 Prisma 마이그레이션 5개를 적용했고 확인된 Supabase Auth 계정을 내부 ADMIN으로 등록했다. Vercel Production 환경변수를 등록했으며 운영 주소는 `https://eruty-campaign-os.vercel.app`이다. 이 변경 작성 시점에는 실제 배포·HTTPS 로그인 검증을 진행 중이다.
+Supabase `KIMUE_PRIVATE`의 `eruty-campaign-os` 프로젝트(서울, PostgreSQL 17.11)와 Vercel `eruty1/eruty-campaign-os` 프로젝트(서울 함수, Node 24)를 연결했다. 운영 DB에 Prisma 마이그레이션 5개를 적용했고 확인된 Supabase Auth 계정을 내부 ADMIN으로 등록했다. Vercel Production 배포와 HTTPS 검증을 완료했다. 운영 주소는 **https://eruty-campaign-os.vercel.app** 이다. 최초 관리자 로그인은 사용자가 직접 확인했고 Auth 기록도 확인했다. Node 메이저 자동 업그레이드를 막기 위해 package engines를 24.x로 고정한다.
 
 Supabase 신규 생성 비용 확인 기능이 연결 서버에 없어, 사용자가 Pro 조직에서 별도로 신규 프로젝트를 만들었다. Vercel 플러그인의 팀 권한은 403이었으나 CLI 로그인 후 동일 팀 접근에 성공했다. 기존 외부 프로젝트는 수정하지 않았다.
 
@@ -42,9 +42,18 @@ DIRECT_URL, TEST_DATABASE_URL, AUTH_PROXY_SECRET, 로컬 DEMO 환경변수는 Ve
 ## 로컬 검증 (2026-10-12)
 
 - PostgreSQL 18.4 전용 테스트 DB와 Supabase PostgreSQL 17.11에 마이그레이션을 적용했다. 운영 Prisma status는 up to date다.
-- 단위 30개 + 실제 PostgreSQL 통합 13개 + 기존 브라우저 E2E 3개 = 46개 통과. 타입 검사·린트·프로덕션 빌드·npm audit(0건)을 검증한다. 초기 준비 커밋의 GitHub CI 두 건은 모두 통과했다.
+- 단위 30개 + 실제 PostgreSQL 통합 13개 + 기존 브라우저 E2E 3개 = 46개 통과. 타입 검사·린트·Vercel 프로덕션 빌드·npm audit(0건) 통과. 배포 코드 커밋 db61756의 GitHub CI 두 건도 모두 통과했다.
 - 새 인증 테스트는 서버 검증 ID, 위조/만료 세션, 미등록·비활성·DEMO 계정 차단, DB 역할 사용, 쿠키 보안, Origin 검사, 미등록 로그인 후 세션 정리를 확인한다. RLS 테스트는 실제 PG 비소유자 역할에 DML 권한을 부여해도 조회/생성이 차단되는지 확인한다.
-- Supabase 모드 로컬 화면에서 미로그인 업무 API 401, 외부 Origin 로그인 요청 403을 확인했다. 실제 Supabase Auth 로그인은 계정 연결 후 별도로 검증해야 한다.
+- 실제 운영 HTTPS 주소에서 로그인/health 200, 미로그인 캠페인·세션 API 401, 외부 Origin 로그인 403을 확인했다. 최초 관리자 실제 로그인은 사용자가 확인했고 Supabase Auth의 로그인 기록도 확인했다.
+- 실제 Supabase transaction pooler와 eruty_app 역할로 서비스 계층의 브랜드→국가→캠페인→전략→활동→세부 작업 생성/수정/조회/삭제를 확인했다. 원화 계획 합계, 독립된 두 매출 목표, 활동 수와 날짜 기간이 정확했다. 검증용 데이터 6개는 삭제했고 감사 기록 14개는 유지했다. 이는 실제 DB 서비스 검증이며, 운영 브라우저 CRUD 자동 E2E와 구분한다.
+- 실제 Supabase REST Data API에서 Brand/AppUser/Campaign/마이그레이션 테이블의 익명 조회가 권한 오류로 차단됐다. 앱 DB 역할은 AppUser 수정, AuditEvent 삭제, Auth 스키마 접근, DDL을 수행할 수 없다.
+- Supabase 보안 점검의 `_prisma_migrations` 무정책 INFO는 의도된 기본 거부다. 감사 함수의 search_path WARN은 다섯 번째 마이그레이션으로 해소했다. 플랫폼의 유출 비밀번호 보호는 아직 꺼져 있으며 [Auth 설정](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection)에서 활성화가 필요하다. 공개 가입 차단/Data API 비활성화 등 플랫폼 설정은 별도로 관리한다.
+
+## 이후 배포
+
+현재 GitHub의 PR 1과 배포 PR은 분리되어 있고, 검증된 배포 변경 브랜치를 CLI로 Production에 올렸다. Git 연동의 Production Branch는 main이다. 이후 PR들을 main에 병합하면 Git 자동 배포가 동작한다. 별도 Preview DB가 없어 Preview는 업무 API가 차단된다.
+
+`vercel --scope eruty1 deploy --prod`로 검증된 변경을 다시 배포할 수 있다. 마이그레이션은 먼저 관리용 DIRECT_URL과 CA 경로를 사용해 `npm run db:migrate`로 적용한다. 앱용 역할을 마이그레이션에 사용하거나 운영 DEMO seed를 실행하지 않는다.
 - [데스크톱 로그인 화면](screenshots/08-supabase-login-desktop.png), [모바일 로그인 화면](screenshots/09-supabase-login-mobile.png). 390px 화면의 가로 넘침 없음.
 
 ```bash
