@@ -13,37 +13,49 @@
     "test:e2e": "playwright test",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
+    "db:migrate:test": "tsx scripts/migrate-test.ts",
     "db:seed": "tsx prisma/seed.ts",
     "db:local": "tsx scripts/local-postgres.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
-    "next": "15.5.27",
-    "react": "19.3.0",
-    "react-dom": "19.3.0",
-    "@prisma/client": "7.10.0",
     "@prisma/adapter-pg": "7.10.0",
-    "pg": "^8.16.3",
+    "@prisma/client": "7.10.0",
     "dotenv": "^17.2.3",
     "jose": "6.2.12",
+    "next": "15.5.27",
+    "pg": "^8.16.3",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
     "zod": "4.6.6"
   },
   "devDependencies": {
+    "@next/swc-wasm-nodejs": "15.5.27",
+    "@playwright/test": "1.64.0",
+    "@tailwindcss/postcss": "4.3.3",
     "@types/node": "^22.0.0",
+    "@types/pg": "^8.15.6",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "typescript": "~5.9.3",
-    "prisma": "7.10.0",
-    "@types/pg": "^8.15.6",
-    "tsx": "^4.20.6",
-    "vitest": "5.0.3",
-    "@playwright/test": "1.64.0",
+    "autoprefixer": "^10.4.0",
     "embedded-postgres": "18.4.0-beta.17",
     "eslint": "^9.39.0",
-    "eslint-config-next": "15.5.27",
-    "tailwindcss": "^3.4.0",
-    "autoprefixer": "^10.4.0",
-    "postcss": "^8.4.0"
+    "eslint-plugin-react-hooks": "^7.0.0",
+    "postcss": "8.5.29",
+    "prisma": "7.10.0",
+    "tailwindcss": "4.3.3",
+    "tsx": "^4.20.6",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.46.0",
+    "vitest": "5.0.3"
   },
-  "engines": { "node": ">=22.12.0" }
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "overrides": {
+    "postcss": "8.5.29",
+    "postcss-selector-parser": "7.1.6",
+    "deepmerge-ts": "8.0.2",
+    "mysql2": "3.24.5"
+  }
 }
