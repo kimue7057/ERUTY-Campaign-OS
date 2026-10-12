@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { AuthControls } from "@/components/auth-controls";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -45,6 +46,7 @@ export default function RootLayout({
         <div className="app-shell">
           <header className="topbar">
             <span>이루티 캠페인 운영</span>
+            {process.env.AUTH_MODE === "supabase" && <AuthControls />}
             <span className="topbar-note">
               {process.env.AUTH_MODE === "demo" &&
               process.env.ALLOW_DEMO_AUTH === "true" &&

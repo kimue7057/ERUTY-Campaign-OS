@@ -6,6 +6,8 @@ export default defineConfig({
   migrations: { path: "prisma/migrations" },
   datasource: {
     url:
-      process.env.DATABASE_URL ?? "postgresql://localhost:5432/eruty_campaign",
+      process.env.DIRECT_URL ??
+      process.env.DATABASE_URL ??
+      "postgresql://localhost:5432/eruty_campaign",
   },
 });

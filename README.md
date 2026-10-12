@@ -6,7 +6,7 @@
 
 ## 준비
 
-- Node.js 22.13 이상 (검증: 24.19), npm, Git
+- Node.js 24.x (검증: 24.19), npm, Git
 - PostgreSQL (검증: 실제 PostgreSQL 18.4)
 - Google Drive 가상 드라이브는 node_modules 파일 쓰기 오류가 생길 수 있으므로 로컬 NTFS 디스크의 체크아웃에서 설치/빌드하세요.
 
@@ -68,7 +68,9 @@ E2E는 전용 테스트 DB의 DEMO 데이터를 사용하고 3100 포트/별도 
 
 ## 운영 인증
 
-운영은 `AUTH_MODE=proxy`와 검증된 사내 인증 프록시 JWT, 사전 등록 AppUser, CampaignMember 역할을 요구합니다. 설정이 없으면 업무 API를 차단합니다. 개발 DEMO 인증은 production에서 강제로 차단됩니다. 실제 SSO 공급자·프록시·호스팅 연결은 아직 수행하지 않았습니다. 이 상태를 운영 배포 완료로 보지 마세요.
+운영 주소: [ERUTY Campaign OS](https://eruty-campaign-os.vercel.app/login).
+
+Supabase/Vercel 배포에서는 `AUTH_MODE=supabase`를 사용합니다. `/login`에서 로그인하며 사전 등록된 AppUser와 CampaignMember 역할이 필요합니다. 기존 `AUTH_MODE=proxy`도 유지합니다. 설정이 없으면 업무 API를 차단하며 개발 DEMO 인증은 production에서 강제로 차단됩니다. [배포 설정·현재 상태](docs/DEPLOYMENT.md)를 확인하세요.
 
 ```bash
 npm run build

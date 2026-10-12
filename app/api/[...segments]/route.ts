@@ -5,6 +5,7 @@ import { DomainError, ensure } from "@/lib/errors";
 import { idSchema } from "@/lib/validation";
 import { serialize } from "@/lib/domain";
 import * as service from "@/lib/service";
+import { requireSameOrigin } from "@/lib/request-security";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,6 +17,7 @@ async function handle(request: NextRequest, context: Context) {
     const { segments: s } = await context.params;
     const method = request.method;
     if (method !== "GET") {
+      if (process.env.AUTH_MODE === "supabase") requireSameOrigin(request);
       const origin = request.headers.get("origin");
       ensure(
         !origin ||
