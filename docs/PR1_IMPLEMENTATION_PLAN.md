@@ -23,6 +23,10 @@ Next.js App Router / React / TypeScript / Tailwind 3 정적 한국어 화면, he
 
 공식 근거: [Next.js 보안 패치](https://nextjs.org/blog/september-2026-security-release), [Prisma PostgreSQL/driver](https://www.prisma.io/docs/orm/v7/core-concepts/supported-databases/postgresql). 간트 라이브러리와 운영 인증/호스팅 공급자는 후속 결정.
 
+## 실제 의존성 검증에 따른 조정
+
+초기 audit에서 Tailwind 3과 기존 Next lint 플러그인의 glob 계열 취약점 및 Next/Prisma 하위 패키지 취약점을 확인했다. Tailwind 4.3.3, TypeScript/React hooks ESLint 규칙, 명시적 하위 패키지 overrides로 갱신했고 최종 audit는 0건이다. App Router/TypeScript/Tailwind/PostgreSQL/Prisma 스택은 유지한다. 자세한 고정 버전·라이선스·공식 근거는 `docs/DEPENDENCIES.md`에 기록했다. 네이티브 SWC가 Windows 정책으로 차단되어 공식 WASM compiler를 사용했고 보안 설정은 변경하지 않았다.
+
 ## 순서와 범위
 
 1. 기초 모델/DB 제약 → 2. 서버 인증/검증/CRUD → 3. 한국어 화면 → 4. 마이그레이션/테스트/스크린샷 → 5. PR 제출.
