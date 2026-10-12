@@ -16,3 +16,5 @@ test-results/
 private-data/
 evidence/
 exports/
+generated/
+.local-postgres/
