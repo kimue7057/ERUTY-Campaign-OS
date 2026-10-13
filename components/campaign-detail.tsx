@@ -306,11 +306,12 @@ export default function CampaignDetail({
               </p>
             </div>
             <div className="metric">
-              <span>활동 배정 예산</span>
+              <span>전략 배정 예산</span>
               <strong className="amount">
-                {krw(c.summary.allocatedPlanKrw)}
+                {krw(c.summary.allocatedStrategyKrw)}
               </strong>
-              <Link href={`/campaigns/${id}/budget`}>활동별 계획 보기 →</Link>
+              <Link href={`/campaigns/${id}/budget`}>전략별 배정 보기 →</Link>
+              {c.summary.unbudgetedStrategyCount > 0 && <p>예산 미설정 전략 {c.summary.unbudgetedStrategyCount}개</p>}
             </div>
             <div className="metric">
               <span>순판매액 목표</span>
@@ -324,7 +325,7 @@ export default function CampaignDetail({
             </div>
           </div>
           <div className="overview-strip">
-            <div>캠페인 남은 예산 <strong>{krw(c.summary.unallocatedPlanKrw)}</strong>{c.summary.overBudget && <span className="badge warning">한도 초과</span>}</div>
+            <div>캠페인 남은 예산 <strong>{krw(c.summary.unallocatedStrategyKrw)}</strong>{c.summary.strategyOverBudget && <span className="badge warning">한도 초과</span>}</div>
             <div>
               <span className="dot green" />
               활동 <strong>{c.summary.activityCount}</strong>
@@ -567,28 +568,31 @@ export default function CampaignDetail({
               </p>
             </div>
             <div className="metric">
-              <span>활동에 배정한 예산</span>
+              <span>전략 배정 예산</span>
               <strong className="amount">
-                {krw(c.summary.allocatedPlanKrw)}
+                {krw(c.summary.allocatedStrategyKrw)}
               </strong>
+              <p>전략별 예산 한도 합계</p>
+              {c.summary.unbudgetedStrategyCount > 0 && <p>예산 미설정 전략 {c.summary.unbudgetedStrategyCount}개</p>}
             </div>
             <div
-              className={`metric ${c.summary.overBudget ? "over-budget" : ""}`}
+              className={`metric ${c.summary.strategyOverBudget ? "over-budget" : ""}`}
             >
               <span>
-                {c.summary.overBudget ? "예산 한도 초과" : "캠페인 남은 예산"}
+                {c.summary.strategyOverBudget ? "예산 한도 초과" : "캠페인 남은 예산"}
               </span>
               <strong className="amount">
-                {krw(c.summary.unallocatedPlanKrw)}
+                {krw(c.summary.unallocatedStrategyKrw)}
               </strong>
-              <p>한도 − 활동 계획 합계</p>
+              <p>캠페인 한도 − 전략 배정 합계</p>
             </div>
           </div>
           <section className="panel"><h2>전략별 예산 한도 · 잔여</h2>{c.strategies.map(strategy => <div key={strategy.id}><h3>{strategy.name}</h3><StrategyPlan strategy={strategy} workItems={c.workItems} campaign={c} /></div>)}</section>
           <aside className="note">
             <strong>기초 예산 계획</strong>
             <p>
-              활동 기본 계획 예산만 저장·합산합니다. 세부 작업 배분·공통비
+              캠페인 배정·잔여는 전략 예산을 기준으로 표시하며, 전략 잔여는
+              소속 활동 예산을 차감합니다. 세부 작업 배분·공통비
               편집과 계약·발생 비용·지급·증빙 관리는 준비 중입니다. 실제 비용과
               지급액은 미연결입니다.
             </p>

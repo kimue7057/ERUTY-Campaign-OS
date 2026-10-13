@@ -139,6 +139,7 @@ describe("실제 PostgreSQL / Prisma CRUD", () => {
     const campaign = await svc.saveCampaign(admin, { ...campaignInput(`TEST 전략 계획 ${runId}`), budgetCeilingKrw: "1000000" });
     let strategy = await svc.saveStrategy(admin, campaign.id, { name: "TEST 계획 전략", sortOrder: 0, planStart: "2026-10-02", planEnd: "2026-10-20", budgetCeilingKrw: "500000" });
     expect((await svc.detail(admin, campaign.id)).summary.unallocatedPlanKrw).toBe("1000000");
+    expect((await svc.detail(admin, campaign.id)).summary).toMatchObject({ allocatedStrategyKrw: "500000", unallocatedStrategyKrw: "500000" });
     strategy = await svc.saveStrategy(admin, campaign.id, { name: "TEST 계획 전략 수정", sortOrder: 0, revision: strategy.revision }, strategy.id);
     expect(strategy.planStart?.toISOString()).toBe("2026-10-02T00:00:00.000Z");
     expect(strategy.budgetCeilingKrw).toBe(500000n);
@@ -151,6 +152,7 @@ describe("실제 PostgreSQL / Prisma CRUD", () => {
     const result = await svc.detail(admin, campaign.id);
     expect(result.budgetCeilingKrw).toBe(1000000n);
     expect(result.summary.unallocatedPlanKrw).toBe("700000");
+    expect(result.summary).toMatchObject({ allocatedStrategyKrw: "500000", unallocatedStrategyKrw: "500000" });
     expect(result.strategies[0].budgetCeilingKrw).toBe(500000n);
     await svc.remove(admin, "work", activity.id, activity.revision, campaign.id);
     expect((await svc.detail(admin, campaign.id)).summary.unallocatedPlanKrw).toBe("1000000");

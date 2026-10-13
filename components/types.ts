@@ -57,6 +57,10 @@ export type Campaign = {
   strategies: Strategy[];
   workItems: Work[];
   summary: {
+    allocatedStrategyKrw: string;
+    unallocatedStrategyKrw: string;
+    strategyOverBudget: boolean;
+    unbudgetedStrategyCount: number;
     allocatedPlanKrw: string;
     unallocatedPlanKrw: string;
     overBudget: boolean;
