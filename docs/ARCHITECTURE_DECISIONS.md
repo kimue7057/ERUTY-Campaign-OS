@@ -20,7 +20,8 @@ Brand -> BrandCountry -> Campaign -> Strategy -> WorkItem(ACTIVITY) -> WorkItem(
 ## 핵심 계산
 - allocated = SUM(activity budget lines) + SUM(campaign common lines)
 - subtask allocation은 위 SUM에 포함하지 않음 (분할 배정만 의미)
-- budget unallocated = ceiling - allocated; negative -> 초과 경고
+- activity-plan unallocated = ceiling - allocated; negative -> 활동 계획 초과 경고
+- 캠페인 개요와 예산 탭의 전략 배정 예산 = SUM(strategy budget ceilings). 캠페인 남은 예산 = 캠페인 한도 - 전략 배정 예산; negative -> 전략 배정 초과 경고. 전략 미설정 예산은 합계에서 제외하고 개수를 표시한다. 전략 내부의 남은 예산은 전략 한도 - 활동 배정 합계이다. 전략 배정과 활동 계획을 합산하거나 캠페인 잔여에서 두 번 차감하지 않는다. (2026-10-13 사용자 확정)
 - incurred = SUM(effective approved expenses); draft/reversed 제외
 - paid = SUM(effective cleared payments) net of reversals
 - unpaid = incurred - paid, 동일 지급 대상 범위에서 계산
