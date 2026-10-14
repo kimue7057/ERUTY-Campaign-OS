@@ -28,6 +28,7 @@ export type Work = {
   parentId: string | null;
   kind: "ACTIVITY" | "SUBTASK";
   name: string;
+  description: string | null;
   ownerId: string | null;
   owner: Person | null;
   status: string;

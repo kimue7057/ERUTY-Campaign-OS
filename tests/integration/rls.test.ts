@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { db } from "../../lib/db";
 
 const role = `eruty_rls_test_${randomUUID().replaceAll("-", "")}`;
-const tables = ["AppUser", "Brand", "BrandCountry", "Campaign", "CampaignMember", "Strategy", "WorkItem", "BudgetLine", "AuditEvent"];
+const tables = ["AppUser", "Brand", "BrandCountry", "Campaign", "CampaignMember", "Strategy", "WorkItem", "BudgetLine", "AuditEvent", "WorkJournal"];
 const quotedTables = tables.map((name) => `"${name}"`).join(", ");
 let created = false;
 let brandId: string;

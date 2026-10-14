@@ -135,6 +135,56 @@ afterAll(async () => {
 });
 
 describe("실제 PostgreSQL / Prisma CRUD", () => {
+  it("활동 내용·업무일지 권한·충돌·수정 이력·페이지와 기록 보존", async () => {
+    const campaign = await svc.saveCampaign(admin, campaignInput(`TEST 기록 ${runId}`));
+    await db.campaignMember.createMany({ data: [{ campaignId: campaign.id, userId: editor.id, role: "EDITOR" }, { campaignId: campaign.id, userId: viewer.id, role: "VIEWER" }] });
+    const strategy = await svc.saveStrategy(admin, campaign.id, { name: "기록 전략", sortOrder: 0 });
+    const input = { ...workInput("기록 활동"), strategyId: strategy.id, description: "최초 설명", plannedBudgetKrw: "500" };
+    const work = await svc.saveWork(admin, campaign.id, input);
+    const path = `campaigns/${campaign.id}/work-items/${work.id}`;
+    expect((await request("GET", path, undefined, outsider)).status).toBe(404);
+    expect((await request("PATCH", `${path}/description`, { description: "수정 설명", revision: 1 }, viewer)).status).toBe(403);
+    const description = await request("PATCH", `${path}/description`, { description: "수정 설명", revision: 1 }, editor);
+    expect(description.status).toBe(200);
+    expect((await request("PATCH", `${path}/description`, { description: "충돌", revision: 1 }, editor)).status).toBe(409);
+    const { description: _description, ...legacyInput } = input;
+    const changed = await svc.saveWork(editor, campaign.id, { ...legacyInput, revision: 2, status: "IN_PROGRESS", plannedBudgetKrw: "600", plannedEnd: "2026-10-06" }, work.id);
+    expect(changed.description).toBe("수정 설명");
+    const metadataHistory = await request("GET", `${path}/history`, undefined, viewer);
+    expect(metadataHistory.status).toBe(200);
+    expect(metadataHistory.body.data.items.flatMap((h: { changes: { label: string }[] }) => h.changes).map((c: { label: string }) => c.label)).toEqual(expect.arrayContaining(["상태", "계획 종료일", "활동 계획 예산", "활동 내용"]));
+    expect((await request("POST", `${path}/journals`, { body: "일지" }, viewer)).status).toBe(403);
+    expect((await request("POST", `${path}/journals`, { body: "일지", authorId: admin.id }, editor)).status).toBe(422);
+    const logged = await request("POST", `${path}/journals`, { body: "샘플 확인 완료" }, editor);
+    expect(logged.status).toBe(201);
+    expect(logged.body.data.authorId).toBe(editor.id);
+    const journalId = logged.body.data.id;
+    expect((await request("PATCH", `${path}/journals/${journalId}`, { body: "다른 작성자 수정", revision: 1 }, admin)).status).toBe(403);
+    expect((await request("PATCH", `${path}/journals/${journalId}`, { body: "샘플 확인 및 발주 완료", revision: 1 }, editor)).status).toBe(200);
+    expect((await request("PATCH", `${path}/journals/${journalId}`, { body: "오래된 수정", revision: 1 }, editor)).status).toBe(409);
+    const versions = await request("GET", `${path}/history?journalId=${journalId}`, undefined, viewer);
+    expect(versions.body.data.items[0].changes).toContainEqual({ label: "업무일지 내용", before: "샘플 확인 완료", after: "샘플 확인 및 발주 완료" });
+    expect(versions.body.data.items[0].actorName).toBe(editor.name);
+    expect((await request("GET", `campaigns/${otherCampaignId}/work-items/${work.id}/journals`)).status).toBe(404);
+    await expect(db.workJournal.create({ data: { campaignId: otherCampaignId, workItemId: work.id, authorId: editor.id, body: "소속 위조" } })).rejects.toMatchObject({ code: "P2003" });
+    expect((await request("DELETE", `${path}/journals/${journalId}?revision=1`)).status).toBe(404);
+    expect((await request("DELETE", `${path}?revision=3`)).status).toBe(409);
+    expect(await db.budgetLine.count({ where: { activityId: work.id } })).toBe(1);
+    await db.workJournal.createMany({ data: Array.from({ length: 51 }, (_, index) => ({ campaignId: campaign.id, workItemId: work.id, authorId: editor.id, body: `페이지 ${index}` })) });
+    const first = await request("GET", `${path}/journals`, undefined, viewer);
+    expect(first.body.data.items).toHaveLength(50);
+    expect(first.body.data.items[0].canEdit).toBe(false);
+    const second = await request("GET", `${path}/journals?cursor=${first.body.data.nextCursor}`, undefined, editor);
+    expect(second.body.data.items).toHaveLength(2);
+    expect(second.body.data.items[0].canEdit).toBe(true);
+    expect(new Set([...first.body.data.items, ...second.body.data.items].map((l: { id: string }) => l.id)).size).toBe(52);
+    expect((await request("GET", `${path}/journals?cursor=${strategy.id}`)).status).toBe(422);
+    // Cleanup is limited to fixtures in the guarded eruty_test database.
+    await db.workJournal.deleteMany({ where: { workItemId: work.id } });
+    await svc.remove(admin, "work", work.id, 3, campaign.id);
+    await svc.remove(admin, "strategy", strategy.id, strategy.revision, campaign.id);
+    await svc.remove(admin, "campaign", campaign.id, campaign.revision, campaign.id);
+  });
   it("전략 기간·한도 저장 후 활동 배정·수정·삭제는 캠페인 잔여에서 차감·복원한다", async () => {
     const campaign = await svc.saveCampaign(admin, { ...campaignInput(`TEST 전략 계획 ${runId}`), budgetCeilingKrw: "1000000" });
     let strategy = await svc.saveStrategy(admin, campaign.id, { name: "TEST 계획 전략", sortOrder: 0, planStart: "2026-10-02", planEnd: "2026-10-20", budgetCeilingKrw: "500000" });
