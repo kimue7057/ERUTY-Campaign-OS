@@ -54,6 +54,7 @@ model AppUser {
   ownedCampaigns Campaign[]
   workItems      WorkItem[]
   memberships    CampaignMember[]
+  journals       WorkJournal[]
 }
 
 model Brand {
@@ -143,6 +144,7 @@ model WorkItem {
   parentKind   WorkKind     @default(ACTIVITY)
   kind         WorkKind
   name         String
+  description  String?
   ownerId      String?      @db.Uuid
   status       WorkStatus   @default(PLANNED)
   plannedStart DateTime     @db.Date
@@ -159,12 +161,30 @@ model WorkItem {
   children     WorkItem[]   @relation("WorkHierarchy")
   owner        AppUser?     @relation(fields: [ownerId], references: [id], onDelete: Restrict)
   budgetLines  BudgetLine[]
+  journals     WorkJournal[]
 
   @@unique([id, campaignId, strategyId, kind])
   @@unique([id, campaignId, kind])
+  @@unique([id, campaignId])
   @@index([campaignId, strategyId, sortOrder])
   @@index([parentId])
   @@index([ownerId])
+}
+
+model WorkJournal {
+  id         String   @id @default(uuid()) @db.Uuid
+  workItemId String   @db.Uuid
+  campaignId String   @db.Uuid
+  authorId   String   @db.Uuid
+  body       String
+  revision   Int      @default(1)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  workItem   WorkItem @relation(fields: [workItemId, campaignId], references: [id, campaignId], onDelete: Restrict, onUpdate: Restrict)
+  author     AppUser  @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([workItemId, createdAt, id])
+  @@index([authorId])
 }
 
 // PR 1: basic activity plans. Subtask partitioning and common-cost editors are PR 3.

@@ -5,7 +5,7 @@ import { api } from "./api";
 export type Field = {
   key: string;
   label: string;
-  type?: "text" | "date" | "money" | "select" | "number";
+  type?: "text" | "date" | "money" | "select" | "number" | "textarea";
   options?: { value: string; label: string }[];
   nullable?: boolean;
   disabled?: boolean;
@@ -80,7 +80,9 @@ export function EntityForm({
               <label htmlFor={`${id}-${f.key}`}>
                 <span>{f.label}</span>
               </label>
-              {f.type === "select" ? (
+              {f.type === "textarea" ? (
+                <textarea id={`${id}-${f.key}`} name={f.key} disabled={busy || f.disabled} required={!f.nullable} rows={6} maxLength={10000} defaultValue={String(values[f.key] ?? "")} />
+              ) : f.type === "select" ? (
                 <select
                   id={`${id}-${f.key}`}
                   name={f.key}

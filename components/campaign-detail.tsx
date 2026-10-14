@@ -6,6 +6,7 @@ import { api } from "./api";
 import { EntityForm, DeleteButton, type Field } from "./entity-form";
 import { campaignFields, workFields } from "./campaign-fields";
 import { StrategyPlan } from "./strategy-plan";
+import { ActivityDrawer } from "./activity-drawer";
 import {
   krw,
   day,
@@ -33,6 +34,7 @@ export default function CampaignDetail({
   const [b, setB] = useState<Bootstrap>();
   const [error, setError] = useState("");
   const [editor, setEditor] = useState<Editor>();
+  const [selectedWork, setSelectedWork] = useState<string>();
   const router = useRouter();
   const load = () =>
     Promise.all([api<Campaign>(`campaigns/${id}`), api<Bootstrap>("bootstrap")])
@@ -141,6 +143,7 @@ export default function CampaignDetail({
         parentId,
         kind: activity ? "ACTIVITY" : "SUBTASK",
         name: item?.name ?? "",
+        description: item?.description ?? null,
         ownerId: item?.ownerId ?? null,
         status: item?.status ?? "PLANNED",
         plannedStart: day(item?.plannedStart ?? strategy?.planStart ?? c.planStart),
@@ -168,7 +171,7 @@ export default function CampaignDetail({
             className={`work-name ${item.kind === "SUBTASK" ? "subtask-name" : ""}`}
           >
             {item.kind === "SUBTASK" && <span aria-hidden="true">↳ </span>}
-            {item.name}
+            <button className="work-link" disabled={!!editor} onClick={() => setSelectedWork(item.id)} aria-label={`${item.name} 상세 보기`}>{item.name}</button>
           </span>
           {outside && <span className="badge warning">캠페인 기간 밖</span>}
         </td>
@@ -228,6 +231,7 @@ export default function CampaignDetail({
   };
   return (
     <>
+      {selectedWork && <ActivityDrawer key={selectedWork} campaignId={id} workId={selectedWork} onClose={() => setSelectedWork(undefined)} onSaved={load} onEdit={work => { setSelectedWork(undefined); editWork(work.strategyId, work.parentId, work); }} />}
       <nav className="breadcrumb" aria-label="현재 위치">
         <Link href="/">캠페인</Link>
         <span>/</span>
@@ -529,7 +533,7 @@ export default function CampaignDetail({
                             }
                           >
                             {w.kind === "SUBTASK" ? "↳ " : ""}
-                            {w.name}
+                            <button className="work-link" onClick={() => setSelectedWork(w.id)} aria-label={`${w.name} 상세 보기`}>{w.name}</button>
                             {(day(w.plannedStart) < day(c.planStart) ||
                               day(w.plannedEnd) > day(c.planEnd)) && (
                               <span className="badge warning">
@@ -624,7 +628,7 @@ export default function CampaignDetail({
                       .map((w) => (
                         <tr key={w.id}>
                           <td>{s.name}</td>
-                          <td>{w.name}</td>
+                          <td><button className="work-link" onClick={() => setSelectedWork(w.id)} aria-label={`${w.name} 상세 보기`}>{w.name}</button></td>
                           <td className="money-cell">
                             {krw(
                               w.budgetLines

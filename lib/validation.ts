@@ -84,6 +84,7 @@ export const workSchema = z
       error: "올바른 작업 유형을 선택해 주세요.",
     }),
     name,
+    description: z.string().trim().max(10000, "활동 내용은 10,000자 이하여야 합니다.").refine(v => !v.includes("\u0000"), "사용할 수 없는 문자가 포함되어 있습니다.").nullable().optional(),
     ownerId,
     status: z.enum(["PLANNED", "IN_PROGRESS", "COMPLETED", "ON_HOLD"], {
       error: "올바른 활동 상태를 선택해 주세요.",
@@ -112,3 +113,12 @@ export const workSchema = z
   });
 
 export const toDate = (v: string) => new Date(`${v}T00:00:00.000Z`);
+
+export const descriptionSchema = z.object({
+  description: z.string().trim().max(10000, "활동 내용은 10,000자 이하여야 합니다.").refine(v => !v.includes("\u0000"), "사용할 수 없는 문자가 포함되어 있습니다.").nullable(),
+  revision: z.number().int().positive(),
+}).strict();
+export const journalSchema = z.object({
+  body: z.string().trim().min(1, "업무일지 내용을 입력해 주세요.").max(10000, "업무일지는 10,000자 이하여야 합니다.").refine(v => !v.includes("\u0000"), "사용할 수 없는 문자가 포함되어 있습니다."),
+  revision,
+}).strict();
