@@ -18,6 +18,7 @@ type Props = {
   onSaved: (value: { id: string }) => void | Promise<unknown>;
   onCancel: () => void;
   editing?: boolean;
+  hint?: string;
 };
 export function EntityForm({
   title,
@@ -27,6 +28,7 @@ export function EntityForm({
   onSaved,
   onCancel,
   editing,
+  hint,
 }: Props) {
   const id = useId();
   const [error, setError] = useState("");
@@ -139,7 +141,7 @@ export function EntityForm({
         )}
         <div className="form-actions">
           <p className="muted">
-            금액은 원화 정수, 날짜는 한국 기준 계획일입니다.
+            {hint ?? "금액은 원화 정수, 날짜는 한국 기준 계획일입니다."}
           </p>
           <button className="primary" disabled={busy}>
             {busy ? "저장 중…" : "저장"}

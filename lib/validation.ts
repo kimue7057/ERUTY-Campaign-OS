@@ -122,3 +122,12 @@ export const journalSchema = z.object({
   body: z.string().trim().min(1, "업무일지 내용을 입력해 주세요.").max(10000, "업무일지는 10,000자 이하여야 합니다.").refine(v => !v.includes("\u0000"), "사용할 수 없는 문자가 포함되어 있습니다."),
   revision,
 }).strict();
+
+export const actualsSchema = z.object({
+  actualNetSalesKrw: moneySchema.nullable(),
+  actualErutyRevenueKrw: moneySchema.nullable(),
+  actualIncurredCostKrw: moneySchema.nullable(),
+  actualsAsOfDate: dateSchema.nullable(),
+  actualsNote: z.string().trim().max(10000, "집계 메모는 10,000자 이하여야 합니다.").refine(v => !v.includes("\u0000"), "사용할 수 없는 문자가 포함되어 있습니다.").nullable(),
+  revision: z.number().int().positive(),
+}).strict().refine(v => (v.actualNetSalesKrw === null && v.actualErutyRevenueKrw === null && v.actualIncurredCostKrw === null) || v.actualsAsOfDate !== null, { message: "실적 금액을 입력할 때는 집계 기준일을 함께 입력해 주세요.", path: ["actualsAsOfDate"] });

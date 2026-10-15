@@ -7,6 +7,9 @@ import { EntityForm, DeleteButton, type Field } from "./entity-form";
 import { campaignFields, workFields } from "./campaign-fields";
 import { StrategyPlan } from "./strategy-plan";
 import { ActivityDrawer } from "./activity-drawer";
+import { CampaignActuals } from "./campaign-actuals";
+import { actualFields } from "../lib/actuals";
+import { seoulToday } from "../lib/domain";
 import {
   krw,
   day,
@@ -22,6 +25,7 @@ type Editor = {
   fields: Field[];
   values: Record<string, unknown>;
   editing?: boolean;
+  hint?: string;
 };
 export default function CampaignDetail({
   id,
@@ -120,6 +124,16 @@ export default function CampaignDetail({
           }
         : { name: "", sortOrder: c.strategies.length, planStart: day(c.planStart), planEnd: day(c.planEnd), budgetCeilingKrw: null },
     });
+  const editActuals = () => setEditor({
+    title: "실제 매출·발생 비용 입력", path: `campaigns/${id}/actuals`, editing: true,
+    hint: "집계 기준일까지의 누적 금액을 입력하세요. 기존 금액을 대체하며, 빈 금액은 미입력으로 저장합니다.",
+    fields: [
+      ...actualFields.map(({ key, label }) => ({ key, label: `${label} (원)`, type: "money" as const, nullable: true })),
+      { key: "actualsAsOfDate", label: "집계 기준일", type: "date", nullable: true },
+      { key: "actualsNote", label: "집계 메모", type: "textarea", nullable: true },
+    ],
+    values: { actualNetSalesKrw: c.actualNetSalesKrw, actualErutyRevenueKrw: c.actualErutyRevenueKrw, actualIncurredCostKrw: c.actualIncurredCostKrw, actualsAsOfDate: c.actualsAsOfDate ? day(c.actualsAsOfDate) : seoulToday(), actualsNote: c.actualsNote, revision: c.revision },
+  });
   const editWork = (
     strategyId: string,
     parentId: string | null,
@@ -320,12 +334,12 @@ export default function CampaignDetail({
             <div className="metric">
               <span>순판매액 목표</span>
               <strong className="amount">{krw(c.targetNetSalesKrw)}</strong>
-              <p>실제 순판매액: 미연결</p>
+              <p>실제 순판매액: {c.actualNetSalesKrw === null ? "미입력" : krw(c.actualNetSalesKrw)}</p>
             </div>
             <div className="metric">
               <span>이루티 매출 목표</span>
               <strong className="amount">{krw(c.targetErutyRevenueKrw)}</strong>
-              <p>실제 이루티 매출: 미연결</p>
+              <p>실제 이루티 매출: {c.actualErutyRevenueKrw === null ? "미입력" : krw(c.actualErutyRevenueKrw)}</p>
             </div>
           </div>
           <div className="overview-strip">
@@ -344,9 +358,10 @@ export default function CampaignDetail({
               기준 일정 <strong>미설정</strong>
             </div>
             <div>
-              발생 비용 · 지급액 <strong>미연결</strong>
+              발생 비용 <strong>{c.actualIncurredCostKrw === null ? "미입력" : krw(c.actualIncurredCostKrw)}</strong> · 지급액 <strong>미연결</strong>
             </div>
           </div>
+          <CampaignActuals campaign={c} onEdit={editActuals} disabled={!!editor} />
           <div className="section-head">
             <div>
               <h2>전략과 활동</h2>
@@ -563,6 +578,7 @@ export default function CampaignDetail({
       )}
       {tab === "budget" && (
         <>
+          <CampaignActuals campaign={c} onEdit={editActuals} disabled={!!editor} />
           <div className="stats-grid three">
             <div className="metric">
               <span>승인 예산 한도</span>
@@ -597,8 +613,8 @@ export default function CampaignDetail({
             <p>
               캠페인 배정·잔여는 전략 예산을 기준으로 표시하며, 전략 잔여는
               소속 활동 예산을 차감합니다. 세부 작업 배분·공통비
-              편집과 계약·발생 비용·지급·증빙 관리는 준비 중입니다. 실제 비용과
-              지급액은 미연결입니다.
+              편집과 계약·활동별 발생 비용·지급·증빙 관리는 준비 중입니다.
+              캠페인 전체의 수기 발생 비용은 위 실적에 표시하며, 활동별 비용 원장과 지급액은 미연결입니다.
             </p>
             <Link href={`/campaigns/${id}`}>활동 예산 수정 →</Link>
           </aside>
