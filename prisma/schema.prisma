@@ -92,6 +92,11 @@ model Campaign {
   budgetCeilingKrw      BigInt           @default(0)
   targetNetSalesKrw     BigInt           @default(0)
   targetErutyRevenueKrw BigInt           @default(0)
+  actualNetSalesKrw     BigInt?
+  actualErutyRevenueKrw BigInt?
+  actualIncurredCostKrw BigInt?
+  actualsAsOfDate       DateTime?        @db.Date
+  actualsNote           String?
   vatPolicy             VatPolicy
   isDemo                Boolean          @default(false)
   revision              Int              @default(1)

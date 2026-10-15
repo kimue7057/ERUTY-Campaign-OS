@@ -135,6 +135,43 @@ afterAll(async () => {
 });
 
 describe("실제 PostgreSQL / Prisma CRUD", () => {
+  it("캠페인 수기 실적·목표 분리·권한·DB 제약·정정 이력·대시보드 집계", async () => {
+    const baseline = (await request("GET", "dashboard-summary")).body.data;
+    const campaign = await svc.saveCampaign(admin, campaignInput(`TEST 실적 ${runId}`));
+    await db.campaignMember.createMany({ data: [{ campaignId: campaign.id, userId: editor.id, role: "EDITOR" }, { campaignId: campaign.id, userId: viewer.id, role: "VIEWER" }] });
+    const path = `campaigns/${campaign.id}/actuals`;
+    const value = { actualNetSalesKrw: "9000000", actualErutyRevenueKrw: "1500000", actualIncurredCostKrw: "700000", actualsAsOfDate: "2026-10-15", actualsNote: "수기 누적 실적", revision: 1 };
+    expect((await request("PATCH", path, value, outsider)).status).toBe(404);
+    expect((await request("PATCH", path, value, viewer)).status).toBe(403);
+    expect((await request("PATCH", path, { ...value, budgetCeilingKrw: "1" }, editor)).status).toBe(422);
+    expect((await request("PATCH", path, value, editor)).status).toBe(200);
+    expect((await request("PATCH", path, value, editor)).status).toBe(409);
+    const changed = await svc.saveCampaign(admin, { ...campaignInput(campaign.name), targetNetSalesKrw: "77", revision: 2 }, campaign.id);
+    expect(changed.actualNetSalesKrw).toBe(9000000n);
+    expect(changed.actualErutyRevenueKrw).toBe(1500000n);
+    expect(changed.actualIncurredCostKrw).toBe(700000n);
+    expect(changed.budgetCeilingKrw).toBe(15000000n);
+    const read = await request("GET", `campaigns/${campaign.id}`, undefined, viewer);
+    expect(read.body.data.actualNetSalesKrw).toBe("9000000");
+    const total = (await request("GET", "dashboard-summary")).body.data;
+    expect(total.actualNetSalesKrw.totalKrw).toBe((BigInt(baseline.actualNetSalesKrw.totalKrw) + 9000000n).toString());
+    expect((await request("GET", "dashboard-summary", undefined, outsider)).body.data.actualNetSalesKrw.recordedCount).toBe(0);
+    await expect(db.campaign.update({ where: { id: campaign.id }, data: { actualNetSalesKrw: -1n } })).rejects.toThrow();
+    await expect(db.campaign.update({ where: { id: campaign.id }, data: { actualsAsOfDate: null } })).rejects.toThrow();
+    expect((await request("PATCH", path, { ...value, actualIncurredCostKrw: "800000", revision: 3 }, editor)).status).toBe(200);
+    const history = await request("GET", path, undefined, viewer);
+    expect(history.body.data.items[0].changes).toContainEqual({ label: "실제 발생 비용", before: "700,000원", after: "800,000원" });
+    expect(history.body.data.items[0].actorName).toBe(editor.name);
+    expect((await request("GET", path, undefined, outsider)).status).toBe(404);
+    expect((await request("GET", `${path}?cursor=${otherCampaignId}`)).status).toBe(422);
+    const empty = { actualNetSalesKrw: null, actualErutyRevenueKrw: null, actualIncurredCostKrw: null, actualsAsOfDate: null, actualsNote: "정정: 집계 재확인", revision: 4 };
+    expect((await request("PATCH", path, empty, editor)).status).toBe(200);
+    expect((await request("GET", "dashboard-summary")).body.data.actualNetSalesKrw.totalKrw).toBe(baseline.actualNetSalesKrw.totalKrw);
+    expect((await request("PATCH", path, { ...empty, actualNetSalesKrw: "0", actualsAsOfDate: "2026-10-15", revision: 5 }, editor)).status).toBe(200);
+    expect((await request("GET", "dashboard-summary")).body.data.actualNetSalesKrw.recordedCount).toBe(baseline.actualNetSalesKrw.recordedCount + 1);
+    expect((await request("GET", path)).body.data.items).toHaveLength(4);
+    await svc.remove(admin, "campaign", campaign.id, 6, campaign.id);
+  });
   it("활동 내용·업무일지 권한·충돌·수정 이력·페이지와 기록 보존", async () => {
     const campaign = await svc.saveCampaign(admin, campaignInput(`TEST 기록 ${runId}`));
     await db.campaignMember.createMany({ data: [{ campaignId: campaign.id, userId: editor.id, role: "EDITOR" }, { campaignId: campaign.id, userId: viewer.id, role: "VIEWER" }] });

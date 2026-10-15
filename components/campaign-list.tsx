@@ -3,16 +3,20 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "./api";
 import { krw, day, labelStatus, type Campaign } from "./types";
+import { actualFields, type ActualTotals } from "../lib/actuals";
 
 export default function CampaignList() {
   const [rows, setRows] = useState<Campaign[] | null>(null);
+  const [totals, setTotals] = useState<ActualTotals>();
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
   useEffect(() => {
-    api<Campaign[]>("campaigns")
-      .then(setRows)
-      .catch((e) => setError(e.message));
+    let live = true;
+    Promise.all([api<Campaign[]>("campaigns"), api<ActualTotals>("dashboard-summary")])
+      .then(([campaigns, summary]) => { if (live) { setRows(campaigns); setTotals(summary); } })
+      .catch((e) => { if (live) setError(e.message); });
+    return () => { live = false; };
   }, []);
   const filtered = rows?.filter(
     (c) =>
@@ -40,7 +44,7 @@ export default function CampaignList() {
           {error}
         </p>
       )}
-      <div className="stats-grid">
+      <div className="stats-grid three">
         <div className="metric">
           <span>전체 캠페인</span>
           <strong>
@@ -62,12 +66,14 @@ export default function CampaignList() {
             <small>개</small>
           </strong>
         </div>
-        <div className="metric">
-          <span>실제 매출 · 발생 비용</span>
-          <strong className="not-connected">미연결</strong>
-          <p>목표와 계획만 관리합니다.</p>
-        </div>
       </div>
+      <div className="stats-grid three" aria-label="실제 매출·발생 비용 합계">
+        {actualFields.map(({ key, label }) => <div className="metric" key={key}>
+          <span>{label}</span><strong className="amount">{!totals ? "—" : totals[key].recordedCount === 0 ? "미입력" : krw(totals[key].totalKrw)}</strong>
+          <p>수기 입력 {totals?.[key].recordedCount ?? "—"} / {totals?.campaignCount ?? "—"}개 캠페인</p>
+        </div>)}
+      </div>
+      <p className="muted">조회 권한이 있는 전체 캠페인의 수기 누적 실적 합계입니다. 미입력 금액은 제외하며, 부가세는 각 캠페인의 입력 기준을 따릅니다.</p>
       <div className="section-head list-toolbar">
         <h2>
           캠페인 목록 <span className="count">{filtered?.length ?? 0}</span>
@@ -137,6 +143,10 @@ export default function CampaignList() {
                 담당자<strong>{c.owner?.name ?? "미지정"}</strong>
               </span>
             </div>
+            <div className="card-facts actual-card-facts">
+              <span>실제 이루티 매출<strong>{c.actualErutyRevenueKrw === null ? "미입력" : krw(c.actualErutyRevenueKrw)}</strong></span>
+              <span>발생 비용<strong>{c.actualIncurredCostKrw === null ? "미입력" : krw(c.actualIncurredCostKrw)}</strong></span>
+            </div>
             <div className="card-bottom">
               <span>
                 전략 {c.strategies.length} · 활동 {c.summary.activityCount}
@@ -149,8 +159,7 @@ export default function CampaignList() {
       <aside className="note">
         <strong>계획과 성과를 구분합니다.</strong>
         <p>
-          순판매액 목표와 이루티 매출 목표는 별도로 저장됩니다. 실제 판매액·발생
-          비용·지급액은 아직 연결되지 않았습니다.
+          매출 목표와 실제 순판매액·이루티 매출은 별도로 저장됩니다. 실제 매출과 발생 비용은 캠페인에서 수기로 입력한 누적 값이며, 승인된 비용 원장·지급액과는 별도입니다.
         </p>
       </aside>
     </>
