@@ -36,6 +36,8 @@ Brand -> BrandCountry -> Campaign -> Strategy -> WorkItem(ACTIVITY) -> WorkItem(
 - successor scheduling changes need **preview then explicit confirm**.
 
 ## 보안 및 운영
+
+- 2026-10-15 사용자 요청: 캠페인별 실제 순판매액·이루티 매출·발생 비용을 집계 기준일과 함께 수기 누적값으로 저장한다. 목표/예산과 별도이며 비용 원장 승인·지급액으로 취급하지 않는다. 기존 값 대체와 감사 기록으로 중복 가산을 방지하며 미입력(null)과 0원을 구분한다. 대시보드는 서버에서 조회 권한 범위의 입력 금액만 합산한다.
 - Internal login required for all persisted application data; server-side campaign membership/role checks.
 - Server-validated finance writes and traceable audit events; private attachment storage and signed read.
 - Demo records must be labeled clearly, isolated from production.
