@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { CampaignCreateForm } from "./campaign-create-form";
 import { api } from "./api";
 import { krw, day, labelStatus, type Campaign } from "./types";
 import { actualFields, type ActualTotals } from "../lib/actuals";
@@ -11,6 +12,14 @@ export default function CampaignList() {
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [notice, setNotice] = useState("");
+  const createButton = useRef<HTMLButtonElement>(null);
+  const createId = useId();
+  const closeCreate = () => {
+    setCreating(false);
+    requestAnimationFrame(() => { if (!document.getElementById(createId)) createButton.current?.focus({ preventScroll: true }); });
+  };
   useEffect(() => {
     let live = true;
     Promise.all([api<Campaign[]>("campaigns"), api<ActualTotals>("dashboard-summary")])
@@ -35,10 +44,18 @@ export default function CampaignList() {
             브랜드의 계획을 국가별 전략과 활동으로 연결합니다.
           </p>
         </div>
-        <Link href="/campaigns/new" className="primary">
+        <button ref={createButton} type="button" className="primary" disabled={creating} aria-expanded={creating} aria-controls={createId} onClick={() => { setNotice(""); setCreating(true); }}>
           + 캠페인 만들기
-        </Link>
+        </button>
       </div>
+      {creating && <CampaignCreateForm id={createId} autoFocus onCancel={closeCreate} onSaved={async () => {
+        try {
+          const [campaigns, summary] = await Promise.all([api<Campaign[]>("campaigns"), api<ActualTotals>("dashboard-summary")]);
+          setRows(campaigns); setTotals(summary); setQuery(""); setStatus(""); setError(""); setNotice("캠페인을 만들었습니다.");
+        } catch { setError("캠페인은 저장되었습니다. 목록을 새로고침해 주세요."); }
+        closeCreate();
+      }} />}
+      {notice && <p role="status" className="note">{notice}</p>}
       {error && (
         <p className="error" role="alert">
           {error}

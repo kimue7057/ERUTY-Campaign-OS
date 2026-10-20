@@ -6,6 +6,8 @@
 
 현재 기능: [전략 계획](docs/STRATEGY_PLANNING.md) · [활동 기록](docs/ACTIVITY_RECORDS.md) · [수기 실적](docs/CAMPAIGN_ACTUALS.md) · [일정 간트](docs/SCHEDULE_TIMELINE.md).
 
+캠페인 만들기는 목록에서 바로 펼쳐집니다. 캠페인·전략·활동·세부 작업의 추가/수정 폼은 누른 버튼 또는 해당 행 바로 아래에 열리고, 활동 상세에서도 패널 안에서 수정합니다. [입력 폼 동작과 검증](docs/INLINE_EDITORS.md).
+
 ## 준비
 
 - Node.js 24.x (검증: 24.19), npm, Git

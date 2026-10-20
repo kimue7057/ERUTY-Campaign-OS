@@ -1,11 +1,11 @@
 "use client";
-import { useId, useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { seoulToday } from "../lib/domain";
 import { barPosition, calendarDays, matchesSchedule, scheduleActivities, scheduleBounds, scheduleDay, scheduleTicks, validScheduleDate } from "../lib/schedule";
 import { labelStatus, workStatuses, type Campaign, type Work } from "./types";
 
-export function ScheduleTimeline({ campaign, onSelect, onAdd, disabled }: {
-  campaign: Campaign; onSelect: (id: string) => void; onAdd: (strategyId: string) => void; disabled: boolean;
+export function ScheduleTimeline({ campaign, onSelect, onAdd, disabled, renderStrategyEditor }: {
+  campaign: Campaign; onSelect: (id: string) => void; onAdd: (strategyId: string) => void; disabled: boolean; renderStrategyEditor?: (id: string) => ReactNode;
 }) {
   const uid = useId();
   const [zoom, setZoom] = useState<"week" | "month">("week");
@@ -66,11 +66,11 @@ export function ScheduleTimeline({ campaign, onSelect, onAdd, disabled }: {
   return <section className="panel schedule-panel" aria-label="일정 간트">
     <div className="section-head"><div><h2>일정 간트</h2><p className="muted">막대나 활동명을 선택하면 내용·업무일지·변경 이력을 확인하고 일정을 수정할 수 있습니다.</p></div></div>
     <div className="gantt-toolbar">
-      <div className="gantt-filter"><label htmlFor={`${uid}-strategy`}>전략 필터</label><select id={`${uid}-strategy`} value={strategy} onChange={e => setStrategy(e.target.value)}><option value="">모든 전략</option>{campaign.strategies.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></div>
-      <div className="gantt-filter"><label htmlFor={`${uid}-status`}>작업 상태 필터</label><select id={`${uid}-status`} value={status} onChange={e => setStatus(e.target.value)}><option value="">모든 상태</option>{Object.entries(workStatuses).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
-      <div className="gantt-filter"><label htmlFor={`${uid}-start`}>조회 시작일</label><input id={`${uid}-start`} type="date" min="0001-01-01" max="9999-12-31" value={start} onChange={e => setStart(e.target.value)} /></div>
-      <div className="gantt-filter"><label htmlFor={`${uid}-end`}>조회 종료일</label><input id={`${uid}-end`} type="date" min="0001-01-01" max="9999-12-31" value={end} onChange={e => setEnd(e.target.value)} /></div>
-      <button type="button" className="quiet" onClick={() => { setStrategy(""); setStatus(""); setStart(""); setEnd(""); }}>필터 초기화</button>
+      <div className="gantt-filter"><label htmlFor={`${uid}-strategy`}>전략 필터</label><select id={`${uid}-strategy`} disabled={disabled} value={strategy} onChange={e => setStrategy(e.target.value)}><option value="">모든 전략</option>{campaign.strategies.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></div>
+      <div className="gantt-filter"><label htmlFor={`${uid}-status`}>작업 상태 필터</label><select id={`${uid}-status`} disabled={disabled} value={status} onChange={e => setStatus(e.target.value)}><option value="">모든 상태</option>{Object.entries(workStatuses).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+      <div className="gantt-filter"><label htmlFor={`${uid}-start`}>조회 시작일</label><input id={`${uid}-start`} disabled={disabled} type="date" min="0001-01-01" max="9999-12-31" value={start} onChange={e => setStart(e.target.value)} /></div>
+      <div className="gantt-filter"><label htmlFor={`${uid}-end`}>조회 종료일</label><input id={`${uid}-end`} disabled={disabled} type="date" min="0001-01-01" max="9999-12-31" value={end} onChange={e => setEnd(e.target.value)} /></div>
+      <button type="button" className="quiet" disabled={disabled} onClick={() => { setStrategy(""); setStatus(""); setStart(""); setEnd(""); }}>필터 초기화</button>
     </div>
     <div className="gantt-view-options">
       <div className="gantt-zoom" role="group" aria-label="간트 표시 단위"><button type="button" aria-pressed={zoom === "week"} onClick={() => setZoom("week")}>주 단위</button><button type="button" aria-pressed={zoom === "month"} onClick={() => setZoom("month")}>월 단위</button></div>
@@ -81,7 +81,7 @@ export function ScheduleTimeline({ campaign, onSelect, onAdd, disabled }: {
     {invalid ? <p role="alert" className="error">{invalidDate ? "올바른 조회 날짜를 입력해 주세요." : "조회 종료일은 시작일보다 빠를 수 없습니다."}</p> : <>
       <div className="section-head gantt-summary"><h3>계획 일정 목록</h3><p role="status">활동 {matched.filter(item => item.kind === "ACTIVITY").length}개 · 세부 작업 {matched.filter(item => item.kind === "SUBTASK").length}개</p></div>
       <p className="muted gantt-range">표시 기간 {range.start} ~ {range.end} · 시작일·종료일 포함 · 가로로 스크롤하여 전체 기간 확인</p>
-      <div className="gantt-scroll" tabIndex={0} role="region" aria-label="계획 일정 표" aria-describedby={`${uid}-help`}>
+      <div className="gantt-scroll inline-edit-table" tabIndex={0} role="region" aria-label="계획 일정 표" aria-describedby={`${uid}-help`}>
         <table className="gantt-table" style={{ width: width + 320 }}>
           <caption className="sr-only">전략별 활동과 선택적 세부 작업의 현재 계획 일정. 왼쪽 열에 전체 날짜, 상태, 담당자를 표시합니다.</caption>
           <colgroup><col style={{ width: 320 }} /><col style={{ width }} /></colgroup>
@@ -90,7 +90,9 @@ export function ScheduleTimeline({ campaign, onSelect, onAdd, disabled }: {
             const activities = groups.filter(group => group.activity.strategyId === item.id);
             if (!activities.length && (status || start || end)) return [];
             const position = item.planStart && item.planEnd ? barPosition(item.planStart, item.planEnd, range) : null;
+            const inlineEditor = renderStrategyEditor?.(item.id);
             return [<tr key={item.id} className="gantt-strategy-row"><th scope="row" className="gantt-label"><div className="gantt-strategy-name"><button type="button" className="gantt-toggle" aria-expanded={!collapsed.has(item.id)} aria-label={`${item.name} 전략 ${collapsed.has(item.id) ? "펼치기" : "접기"}`} onClick={() => toggle(item.id)}>{collapsed.has(item.id) ? "▸" : "▾"}</button><strong>{item.name}</strong>{campaign.canEdit && <button type="button" className="quiet gantt-add" disabled={disabled} aria-label={`${item.name} 일정 활동 추가`} onClick={() => onAdd(item.id)}>+ 활동</button>}</div><p className="gantt-dates">{item.planStart && item.planEnd ? `${scheduleDay(item.planStart)} ~ ${scheduleDay(item.planEnd)}` : "전략 기간 미설정"}</p></th><td className="gantt-track-cell"><div className="gantt-track" style={{ width }}>{position && <span className="gantt-strategy-bar" style={{ left: `${position.left}%`, width: `${position.width}%` }} aria-label={`${item.name} 전략 계획 기간`} />}</div></td></tr>,
+              ...(inlineEditor ? [<tr key={`editor-${item.id}`} className="inline-editor-row"><td colSpan={2} className="inline-editor-cell"><div className="inline-editor-wrap">{inlineEditor}</div></td></tr>] : []),
               ...(!collapsed.has(item.id) ? activities.flatMap(group => [workRow(group.activity, !group.matches, group.children.length), ...(!collapsed.has(group.activity.id) ? group.children.map(child => workRow(child)) : [])]) : []),
             ];
           })}</tbody>
