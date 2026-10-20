@@ -57,7 +57,7 @@ export default function RootLayout({
           </header>
           <main id="main">{children}</main>
           <footer>
-            ERUTY Campaign OS · 계획 관리 기반 · 실제 매출·비용·지급 미연결
+            ERUTY Campaign OS · 캠페인 계획 · 매출·비용 실적 관리
           </footer>
         </div>
       </body>

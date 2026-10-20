@@ -6,6 +6,7 @@ import { idSchema } from "@/lib/validation";
 import { serialize } from "@/lib/domain";
 import * as service from "@/lib/service";
 import * as records from "@/lib/work-records";
+import * as actuals from "@/lib/campaign-actuals";
 import { requireSameOrigin } from "@/lib/request-security";
 
 export const runtime = "nodejs";
@@ -48,6 +49,8 @@ async function handle(request: NextRequest, context: Context) {
     if (method === "GET") {
       if (s[0] === "bootstrap" && s.length === 1)
         result = await service.bootstrap(actor);
+      else if (s[0] === "dashboard-summary" && s.length === 1)
+        result = await actuals.dashboardActuals(actor);
       else if (s[0] === "brands" && s.length === 1)
         result = (await service.bootstrap(actor)).brands;
       else if (s[0] === "brand-countries" && s.length === 1)
@@ -57,7 +60,9 @@ async function handle(request: NextRequest, context: Context) {
       else if (s[0] === "campaigns" && id) {
         const cursor = request.nextUrl.searchParams.get("cursor");
         const journal = request.nextUrl.searchParams.get("journalId");
-        if (s[2] === "work-items" && childId && s.length === 4)
+        if (s[2] === "actuals" && s.length === 3)
+          result = await actuals.actualsHistory(actor, id, cursor ? idSchema.parse(cursor) : undefined);
+        else if (s[2] === "work-items" && childId && s.length === 4)
           result = await records.workDetail(actor, id, childId);
         else if (s[2] === "work-items" && childId && s.length === 5 && s[4] === "journals")
           result = await records.journals(actor, id, childId, cursor ? idSchema.parse(cursor) : undefined);
@@ -75,7 +80,9 @@ async function handle(request: NextRequest, context: Context) {
         }
       } else throw new DomainError(404, "요청한 경로를 찾을 수 없습니다.");
     } else if (method === "POST" || method === "PATCH") {
-      if (s[0] === "campaigns" && id && s[2] === "work-items" && childId && s.length === 5 && s[4] === "journals" && method === "POST")
+      if (s[0] === "campaigns" && id && s[2] === "actuals" && s.length === 3 && method === "PATCH")
+        result = await actuals.saveActuals(actor, id, data);
+      else if (s[0] === "campaigns" && id && s[2] === "work-items" && childId && s.length === 5 && s[4] === "journals" && method === "POST")
         result = await records.saveJournal(actor, id, childId, data);
       else if (s[0] === "campaigns" && id && s[2] === "work-items" && childId && s.length === 6 && recordId && method === "PATCH")
         result = await records.saveJournal(actor, id, childId, data, recordId);

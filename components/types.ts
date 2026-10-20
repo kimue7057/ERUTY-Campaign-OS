@@ -51,6 +51,11 @@ export type Campaign = {
   budgetCeilingKrw: string;
   targetNetSalesKrw: string;
   targetErutyRevenueKrw: string;
+  actualNetSalesKrw: string | null;
+  actualErutyRevenueKrw: string | null;
+  actualIncurredCostKrw: string | null;
+  actualsAsOfDate: string | null;
+  actualsNote: string | null;
   vatPolicy: string;
   isDemo: boolean;
   revision: number;

@@ -11,6 +11,7 @@
 
 .strategy-plan { display: flex; flex-wrap: wrap; gap: 10px 24px; padding: 14px 20px; background: #f5f7f2; border-top: 1px solid var(--line); font-size: 12px; }
 .strategy-plan strong { margin-left: 6px; }
+.actual-card-facts { margin-top: 16px; }
 textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--line); border-radius: 6px; padding: 12px; font: inherit; line-height: 1.6; resize: vertical; }
 .work-link { border: 0; padding: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; text-decoration: underline; text-decoration-color: #bdcbb2; text-underline-offset: 4px; }
 .work-link:hover { color: var(--accent); }
