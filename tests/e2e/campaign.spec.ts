@@ -90,7 +90,7 @@ test("DEMO 목록·개요·일정·예산·브랜드·입력 화면과 모바일
     page.getByRole("heading", { name: "계획 일정 목록" }),
   ).toBeVisible();
   await page.screenshot({
-    path: `${screenshots}/03-schedule-foundation.png`,
+    path: `${screenshots}/21-schedule-gantt-demo.png`,
     fullPage: true,
   });
   await page.getByRole("link", { name: "예산 · 비용", exact: true }).click();

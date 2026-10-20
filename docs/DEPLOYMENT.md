@@ -1,5 +1,11 @@
 # Supabase / Vercel 배포
 
+## 2026-10-20 Git 병합과 배포 경로 정리
+
+사용자 요청에 따라 기존 누적 PR #6 → #5 → #4 → #3 → #2 → #1을 merge commit으로 순서대로 병합했다. 최종 PR #1의 파일 내용이 기존 운영 커밋 `2a56fca`와 동일함을 확인하고 최신 GitHub Actions 검증 성공 후 main에 반영했다. 기능별 중간 버전을 main에 먼저 반영하지 않았다.
+
+main 커밋 `1a4154d`의 CI가 통과했고 Vercel Git 연동이 운영 배포 `dpl_Hn9QmmgYv1cavQ8uD3p9U8PMWwYa`를 생성해 READY가 되었다. 운영 도메인 `eruty-campaign-os.vercel.app`이 해당 배포에 연결된 것을 확인했다. 이제 main이 기존 운영 기능을 포함하며 신규 변경은 main 기준 PR에서 검증·병합한 후 Git 자동 배포한다. 이번 정리에 DB 변경은 없다. 아래의 10월 12일 설명은 최초 구축 당시의 기록이다.
+
 사용자는 2026-10-12 신규 Supabase 및 Vercel 프로젝트 생성·배포를 요청했다. 프로젝트 이름은 `eruty-campaign-os`, 최초 관리자 이메일은 사용자에게 확인했다. 비밀번호·DB 연결 문자열·토큰은 저장소에 보관하지 않는다.
 
 ## 상태
@@ -51,7 +57,7 @@ DIRECT_URL, TEST_DATABASE_URL, AUTH_PROXY_SECRET, 로컬 DEMO 환경변수는 Ve
 
 ## 이후 배포
 
-현재 GitHub의 PR 1과 배포 PR은 분리되어 있고, 검증된 배포 변경 브랜치를 CLI로 Production에 올렸다. Git 연동의 Production Branch는 main이다. 이후 PR들을 main에 병합하면 Git 자동 배포가 동작한다. 별도 Preview DB가 없어 Preview는 업무 API가 차단된다.
+2026-10-20 기존 PR들을 main에 병합해 Git 자동 운영 배포를 확인했다. Git 연동의 Production Branch는 main이며, 이후 변경도 main 기준 PR의 CI 통과 후 병합한다. 별도 Preview DB가 없어 Preview는 업무 API가 차단된다.
 
 `vercel --scope eruty1 deploy --prod`로 검증된 변경을 다시 배포할 수 있다. 마이그레이션은 먼저 관리용 DIRECT_URL과 CA 경로를 사용해 `npm run db:migrate`로 적용한다. 앱용 역할을 마이그레이션에 사용하거나 운영 DEMO seed를 실행하지 않는다.
 - [데스크톱 로그인 화면](screenshots/08-supabase-login-desktop.png), [모바일 로그인 화면](screenshots/09-supabase-login-mobile.png). 390px 화면의 가로 넘침 없음.

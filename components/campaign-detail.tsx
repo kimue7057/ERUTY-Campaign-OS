@@ -6,6 +6,7 @@ import { api } from "./api";
 import { EntityForm, DeleteButton, type Field } from "./entity-form";
 import { campaignFields, workFields } from "./campaign-fields";
 import { StrategyPlan } from "./strategy-plan";
+import { ScheduleTimeline } from "./schedule-timeline";
 import { ActivityDrawer } from "./activity-drawer";
 import { CampaignActuals } from "./campaign-actuals";
 import { actualFields } from "../lib/actuals";
@@ -500,80 +501,7 @@ export default function CampaignDetail({
       {tab === "schedule" && (
         <>
           <section className="panel"><h2>전략별 계획 기간</h2>{c.strategies.map(strategy => <div key={strategy.id}><h3>{strategy.name}</h3><StrategyPlan strategy={strategy} workItems={c.workItems} campaign={c} /></div>)}</section>
-          <aside className="note">
-            <strong>현재 계획 일정</strong>
-            <p>
-              간트차트·드래그·선후행 관계·기준 일정은 준비 중입니다. 날짜, 상태,
-              담당자는 개요의 활동 수정에서 관리하세요.
-            </p>
-            <Link href={`/campaigns/${id}`}>전략과 활동 관리 →</Link>
-          </aside>
-          <section className="panel">
-            <div className="section-head">
-              <h2>계획 일정 목록</h2>
-              <span className="muted">날짜 구간은 시작일·종료일 포함</span>
-            </div>
-            <div
-              className="table-scroll"
-              tabIndex={0}
-              aria-label="계획 일정 표"
-            >
-              <table>
-                <thead>
-                  <tr>
-                    <th>전략</th>
-                    <th>활동 · 세부 작업</th>
-                    <th>계획 시작일</th>
-                    <th>계획 종료일</th>
-                    <th>담당자</th>
-                    <th>상태</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {c.strategies.flatMap((s) =>
-                    c.workItems
-                      .filter(
-                        (w) => w.strategyId === s.id && w.kind === "ACTIVITY",
-                      )
-                      .flatMap((w) => [
-                        w,
-                        ...c.workItems.filter((sub) => sub.parentId === w.id),
-                      ])
-                      .map((w) => (
-                        <tr key={w.id}>
-                          <td>{s.name}</td>
-                          <td
-                            className={
-                              w.kind === "SUBTASK" ? "subtask-name" : ""
-                            }
-                          >
-                            {w.kind === "SUBTASK" ? "↳ " : ""}
-                            <button className="work-link" onClick={() => setSelectedWork(w.id)} aria-label={`${w.name} 상세 보기`}>{w.name}</button>
-                            {(day(w.plannedStart) < day(c.planStart) ||
-                              day(w.plannedEnd) > day(c.planEnd)) && (
-                              <span className="badge warning">
-                                캠페인 기간 밖
-                              </span>
-                            )}
-                          </td>
-                          <td className="date-cell">{day(w.plannedStart)}</td>
-                          <td className="date-cell">{day(w.plannedEnd)}</td>
-                          <td>{w.owner?.name ?? "미지정"}</td>
-                          <td>
-                            <span className={`badge state-${w.status}`}>
-                              {labelStatus(w.status)}
-                            </span>
-                          </td>
-                        </tr>
-                      )),
-                  )}
-                </tbody>
-              </table>
-              {!c.workItems.length && (
-                <p className="empty">등록된 활동이 없습니다.</p>
-              )}
-            </div>
-          </section>
+          <ScheduleTimeline campaign={c} onSelect={setSelectedWork} onAdd={strategyId => editWork(strategyId, null)} disabled={!!editor} />
         </>
       )}
       {tab === "budget" && (
