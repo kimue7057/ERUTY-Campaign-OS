@@ -1,5 +1,7 @@
 node_modules/
 .next/
+.next-*/
+audit-initial.json
 out/
 .env
 .env.*
@@ -16,3 +18,7 @@ test-results/
 private-data/
 evidence/
 exports/
+generated/
+.local-postgres/
+.vercel/
+.supabase/
