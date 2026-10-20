@@ -78,6 +78,8 @@ test("일정 간트의 필터·계층·상세·모바일 조회와 기존 날짜
     await page.getByRole("dialog", { name: "하루 활동", exact: true }).getByRole("button", { name: "상태·일정·예산 수정", exact: true }).click();
     await page.getByLabel("계획 종료일", { exact: true }).fill("2026-10-22");
     await page.getByRole("button", { name: "저장", exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "하루 활동", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "활동 상세 닫기", exact: true }).click();
     await expect(chart.getByRole("rowheader").filter({ hasText: "하루 활동" })).toContainText("2026-10-20 ~ 2026-10-22 · 3일");
     const afterEdit = (await (await page.request.get(base)).json()).data;
     expect(afterEdit.summary.allocatedPlanKrw).toBe(before.summary.allocatedPlanKrw);

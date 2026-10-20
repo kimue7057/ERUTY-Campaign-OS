@@ -1,4 +1,4 @@
-import type { Bootstrap } from "./types";
+import { day, type Bootstrap, type Campaign, type Work } from "./types";
 import { campaignStatuses, workStatuses } from "./types";
 import type { Field } from "./entity-form";
 const options = (values: Record<string, string>) =>
@@ -79,4 +79,18 @@ export function workFields(b: Bootstrap, activity: boolean): Field[] {
         ]
       : []),
   ];
+}
+
+export function workValues(campaign: Campaign, strategyId: string, parentId: string | null, item?: Work): Record<string, unknown> {
+  const strategy = campaign.strategies.find(value => value.id === strategyId);
+  return {
+    strategyId, parentId, kind: parentId ? "SUBTASK" : "ACTIVITY",
+    name: item?.name ?? "", description: item?.description ?? null,
+    ownerId: item?.ownerId ?? null, status: item?.status ?? "PLANNED",
+    plannedStart: day(item?.plannedStart ?? strategy?.planStart ?? campaign.planStart),
+    plannedEnd: day(item?.plannedEnd ?? strategy?.planEnd ?? campaign.planEnd),
+    sortOrder: item?.sortOrder ?? campaign.workItems.length,
+    ...(item ? { revision: item.revision } : {}),
+    ...(!parentId ? { plannedBudgetKrw: item?.budgetLines.find(line => line.category === "INITIAL")?.plannedAmountKrw ?? "0" } : {}),
+  };
 }

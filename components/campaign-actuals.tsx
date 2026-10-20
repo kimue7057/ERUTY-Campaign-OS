@@ -1,12 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { api } from "./api";
 import { actualFields } from "../lib/actuals";
 import { day, krw, type Campaign } from "./types";
 type HistoryItem = { id: string; actorName: string; createdAt: string; changes: { label: string; before: string; after: string }[] };
 type HistoryPage = { items: HistoryItem[]; nextCursor: string | null };
 
-export function CampaignActuals({ campaign, onEdit, disabled }: { campaign: Campaign; onEdit: () => void; disabled: boolean }) {
+export function CampaignActuals({ campaign, onEdit, disabled, children }: { campaign: Campaign; onEdit: () => void; disabled: boolean; children?: ReactNode }) {
   const [expanded, setExpanded] = useState(false);
   const [history, setHistory] = useState<HistoryPage>();
   const [error, setError] = useState("");
@@ -26,6 +26,7 @@ export function CampaignActuals({ campaign, onEdit, disabled }: { campaign: Camp
   };
   return <section className="panel actuals-panel" aria-label="캠페인 실제 매출·발생 비용">
     <div className="section-head"><div><h2>실제 매출 · 발생 비용</h2><p className="muted">캠페인별 누적 실적 · 수기 입력 · 지급액과 별도</p></div>{campaign.canEdit && <button className="secondary" disabled={disabled} onClick={onEdit}>실제 매출·비용 입력</button>}</div>
+    {children}
     <div className="stats-grid three">{actualFields.map(({ key, label }) => <div key={key} className="metric"><span>{label}</span><strong className="amount">{campaign[key] === null ? "미입력" : krw(campaign[key])}</strong></div>)}</div>
     <p className="muted">집계 기준일: {campaign.actualsAsOfDate ? day(campaign.actualsAsOfDate) : "미입력"} · {campaign.vatPolicy === "INCLUDED" ? "부가세 포함" : "부가세 별도"}</p>
     {campaign.actualsNote && <p className="record-text">{campaign.actualsNote}</p>}

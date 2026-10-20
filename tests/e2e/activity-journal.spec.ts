@@ -54,7 +54,8 @@ test("활동 상세 내용·업무일지·수정 이력·자동 변경 이력과
     await page.getByLabel("계획 종료일", { exact: true }).fill("2026-10-20");
     await page.getByLabel("활동 기본 계획 예산 (원)", { exact: true }).fill("600000");
     await page.getByRole("button", { name: "저장", exact: true }).click();
-    await opener.click();
+    await expect(drawer).toBeVisible();
+    await expect(drawer.getByRole("region", { name: "활동 수정", exact: true })).toHaveCount(0);
     await drawer.getByRole("tab", { name: "변경 이력", exact: true }).click();
     await expect(drawer).toContainText("500,000원 → 600,000원");
     await expect(drawer).toContainText("2026-10-18 → 2026-10-20");

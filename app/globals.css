@@ -567,6 +567,12 @@ input::placeholder {
   border-radius: 12px;
   margin: 20px 0 28px;
 }
+.inline-edit-table { container-type: inline-size; }
+.inline-editor-cell { padding: 0 !important; text-align: left; white-space: normal; }
+.inline-editor-wrap { position: sticky; left: 0; width: 100cqw; max-width: 100%; padding: 0 12px; }
+.inline-editor-wrap > .editor { margin: 12px 0; }
+.strategy-panel > .editor { margin: 12px 16px; }
+.activity-drawer .editor { margin: 14px 0 20px; padding: 18px; }
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

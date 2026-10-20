@@ -1,7 +1,9 @@
 "use client";
 import { useEffect, useId, useRef, useState } from "react";
 import { api } from "./api";
-import { day, krw, labelStatus, type Work } from "./types";
+import { EntityForm } from "./entity-form";
+import { workFields, workValues } from "./campaign-fields";
+import { day, krw, labelStatus, type Work, type Campaign, type Bootstrap } from "./types";
 
 type Journal = { id: string; body: string; revision: number; createdAt: string; updatedAt: string; author: { name: string }; canEdit: boolean };
 type History = { id: string; createdAt: string; action: string; actorName: string; changes: { label: string; before: string; after: string }[] };
@@ -25,8 +27,8 @@ function HistoryList({ page, onMore, busy }: { page: Page<History>; onMore: () =
   </>;
 }
 
-export function ActivityDrawer({ campaignId, workId, onClose, onSaved, onEdit }: {
-  campaignId: string; workId: string; onClose: () => void; onSaved: () => Promise<unknown>; onEdit: (work: Work) => void;
+export function ActivityDrawer({ campaignId, campaign, bootstrap, workId, onClose, onSaved }: {
+  campaignId: string; campaign: Campaign; bootstrap: Bootstrap; workId: string; onClose: () => void; onSaved: () => Promise<unknown>;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const uid = useId();
@@ -43,6 +45,12 @@ export function ActivityDrawer({ campaignId, workId, onClose, onSaved, onEdit }:
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [editingWork, setEditingWork] = useState(false);
+  const editButton = useRef<HTMLButtonElement>(null);
+  const closeWorkEditor = () => {
+    setEditingWork(false);
+    requestAnimationFrame(() => { if (!document.getElementById(`${uid}-work-editor`)) editButton.current?.focus({ preventScroll: true }); });
+  };
   const base = `campaigns/${campaignId}/work-items/${workId}`;
   useEffect(() => {
     const node = dialog.current;
@@ -83,7 +91,7 @@ export function ActivityDrawer({ campaignId, workId, onClose, onSaved, onEdit }:
     setRevisions(previous => ({ ...next, items: cursor ? [...previous.items, ...next.items] : next.items })); setRevisionId(id);
   });
   const work = detail?.work;
-  return <dialog ref={dialog} className="activity-drawer" aria-labelledby={`${uid}-title`} onCancel={e => { e.preventDefault(); if (!busy) onClose(); }} onClick={e => { if (e.target === e.currentTarget && !busy) onClose(); }}>
+  return <dialog ref={dialog} className="activity-drawer" aria-labelledby={`${uid}-title`} onCancel={e => { e.preventDefault(); if (!busy) { if (editingWork) closeWorkEditor(); else onClose(); } }} onClick={e => { if (e.target === e.currentTarget && !busy) onClose(); }}>
     <div className="drawer-header">
       <div><p className="eyebrow">{work?.kind === "SUBTASK" ? "세부 작업 상세" : "활동 상세"}</p><h2 id={`${uid}-title`}>{work?.name ?? "활동 불러오는 중"}</h2></div>
       <button className="secondary" onClick={onClose} disabled={busy} aria-label="활동 상세 닫기">닫기</button>
@@ -97,17 +105,20 @@ export function ActivityDrawer({ campaignId, workId, onClose, onSaved, onEdit }:
           <div><dt>계획 기간</dt><dd>{day(work.plannedStart)} ~ {day(work.plannedEnd)}</dd></div>
           <div><dt>활동 계획 예산</dt><dd>{work.kind === "ACTIVITY" ? krw(work.budgetLines.reduce((n, line) => n + BigInt(line.plannedAmountKrw), 0n).toString()) : "배분 미지원"}</dd></div>
         </dl>
-        {detail.canEdit && <button className="secondary" disabled={busy} onClick={() => onEdit(work)}>상태·일정·예산 수정</button>}
+        {detail.canEdit && <button ref={editButton} className="secondary" disabled={busy || editingWork || editingContent || !!editingLog} aria-expanded={editingWork} aria-controls={`${uid}-work-editor`} onClick={() => setEditingWork(true)}>상태·일정·예산 수정</button>}
+        {editingWork && <EntityForm id={`${uid}-work-editor`} autoFocus title={work.kind === "ACTIVITY" ? "활동 수정" : "세부 작업 수정"}
+          path={base} fields={workFields(bootstrap, work.kind === "ACTIVITY")} values={workValues(campaign, work.strategyId, work.parentId, work)} editing
+          onBusyChange={setBusy} onCancel={closeWorkEditor} onSaved={async () => { await refresh(); closeWorkEditor(); setNotice("활동을 수정했습니다."); }} />}
         <div className="tabs drawer-tabs" role="tablist" aria-label="활동 상세 메뉴" onKeyDown={e => {
-          if (busy || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
+          if (busy || editingWork || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
           e.preventDefault();
           const index = tabs.findIndex(t => t.key === tab);
           const next = e.key === "Home" ? 0 : e.key === "End" ? 2 : (index + (e.key === "ArrowRight" ? 1 : 2)) % 3;
           setTab(tabs[next].key); e.currentTarget.querySelectorAll<HTMLButtonElement>("button")[next].focus();
         }}>
-          {tabs.map(t => <button key={t.key} id={`${uid}-${t.key}`} role="tab" aria-selected={tab === t.key} aria-controls={`${uid}-panel-${t.key}`} tabIndex={tab === t.key ? 0 : -1} disabled={busy} onClick={() => setTab(t.key)}>{t.label}</button>)}
+          {tabs.map(t => <button key={t.key} id={`${uid}-${t.key}`} role="tab" aria-selected={tab === t.key} aria-controls={`${uid}-panel-${t.key}`} tabIndex={tab === t.key ? 0 : -1} disabled={busy || editingWork} onClick={() => setTab(t.key)}>{t.label}</button>)}
         </div>
-        <section role="tabpanel" id={`${uid}-panel-${tab}`} aria-labelledby={`${uid}-${tab}`}>
+        <section role="tabpanel" hidden={editingWork} id={`${uid}-panel-${tab}`} aria-labelledby={`${uid}-${tab}`}>
           {tab === "content" && <>
             <h3>활동 내용</h3>
             {editingContent ? <form onSubmit={e => { e.preventDefault(); void action(async () => {

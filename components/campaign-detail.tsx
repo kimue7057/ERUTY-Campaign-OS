@@ -1,10 +1,10 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "./api";
 import { EntityForm, DeleteButton, type Field } from "./entity-form";
-import { campaignFields, workFields } from "./campaign-fields";
+import { campaignFields, workFields, workValues } from "./campaign-fields";
 import { StrategyPlan } from "./strategy-plan";
 import { ScheduleTimeline } from "./schedule-timeline";
 import { ActivityDrawer } from "./activity-drawer";
@@ -21,6 +21,7 @@ import {
   type Work,
 } from "./types";
 type Editor = {
+  anchor: string;
   title: string;
   path: string;
   fields: Field[];
@@ -40,7 +41,19 @@ export default function CampaignDetail({
   const [error, setError] = useState("");
   const [editor, setEditor] = useState<Editor>();
   const [selectedWork, setSelectedWork] = useState<string>();
+  const editorId = useId();
+  const editorTrigger = useRef<HTMLElement | null>(null);
+  const openEditor = (value: Editor) => {
+    editorTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setEditor(value);
+  };
+  const closeEditor = () => {
+    const trigger = editorTrigger.current;
+    setEditor(undefined);
+    requestAnimationFrame(() => { if (!document.getElementById(editorId) && trigger?.isConnected) trigger.focus({ preventScroll: true }); });
+  };
   const router = useRouter();
+  useEffect(() => { setEditor(undefined); setSelectedWork(undefined); }, [id, tab]);
   const load = () =>
     Promise.all([api<Campaign>(`campaigns/${id}`), api<Bootstrap>("bootstrap")])
       .then(([campaign, bootstrap]) => {
@@ -83,7 +96,8 @@ export default function CampaignDetail({
       </>
     );
   const editCampaign = () =>
-    setEditor({
+    openEditor({
+      anchor: "campaign",
       title: "캠페인 수정",
       path: `campaigns/${id}`,
       fields: campaignFields(b, true),
@@ -103,7 +117,8 @@ export default function CampaignDetail({
       },
     });
   const editStrategy = (strategy?: Strategy) =>
-    setEditor({
+    openEditor({
+      anchor: strategy ? `strategy:${strategy.id}` : "strategy:new",
       title: strategy ? "전략 수정" : "전략 추가",
       path: `campaigns/${id}/strategies${strategy ? `/${strategy.id}` : ""}`,
       fields: [
@@ -125,7 +140,8 @@ export default function CampaignDetail({
           }
         : { name: "", sortOrder: c.strategies.length, planStart: day(c.planStart), planEnd: day(c.planEnd), budgetCeilingKrw: null },
     });
-  const editActuals = () => setEditor({
+  const editActuals = () => openEditor({
+    anchor: "actuals",
     title: "실제 매출·발생 비용 입력", path: `campaigns/${id}/actuals`, editing: true,
     hint: "집계 기준일까지의 누적 금액을 입력하세요. 기존 금액을 대체하며, 빈 금액은 미입력으로 저장합니다.",
     fields: [
@@ -139,10 +155,11 @@ export default function CampaignDetail({
     strategyId: string,
     parentId: string | null,
     item?: Work,
+    anchor?: string,
   ) => {
     const activity = !parentId;
-    const strategy = c.strategies.find(s => s.id === strategyId);
-    setEditor({
+    openEditor({
+      anchor: anchor ?? (item ? `work:${item.id}` : parentId ? `subtask:${parentId}` : `strategy:${strategyId}`),
       title: item
         ? activity
           ? "활동 수정"
@@ -153,34 +170,19 @@ export default function CampaignDetail({
       path: `campaigns/${id}/work-items${item ? `/${item.id}` : ""}`,
       fields: workFields(b, activity),
       editing: !!item,
-      values: {
-        strategyId,
-        parentId,
-        kind: activity ? "ACTIVITY" : "SUBTASK",
-        name: item?.name ?? "",
-        description: item?.description ?? null,
-        ownerId: item?.ownerId ?? null,
-        status: item?.status ?? "PLANNED",
-        plannedStart: day(item?.plannedStart ?? strategy?.planStart ?? c.planStart),
-        plannedEnd: day(item?.plannedEnd ?? strategy?.planEnd ?? c.planEnd),
-        sortOrder: item?.sortOrder ?? c.workItems.length,
-        ...(item ? { revision: item.revision } : {}),
-        ...(activity
-          ? {
-              plannedBudgetKrw:
-                item?.budgetLines.find((l) => l.category === "INITIAL")
-                  ?.plannedAmountKrw ?? "0",
-            }
-          : {}),
-      },
+      values: workValues(c, strategyId, parentId, item),
     });
   };
+  const editorAt = (anchor: string) => editor?.anchor === anchor ? <EntityForm
+    key={`${editor.path}-${editor.title}`} {...editor} id={editorId} autoFocus
+    onSaved={async () => { await load(); closeEditor(); }} onCancel={closeEditor}
+  /> : null;
   const workRows = (item: Work) => {
     const outside =
       day(item.plannedStart) < day(c.planStart) ||
       day(item.plannedEnd) > day(c.planEnd);
     return (
-      <tr key={item.id}>
+      <Fragment key={item.id}><tr>
         <td>
           <span
             className={`work-name ${item.kind === "SUBTASK" ? "subtask-name" : ""}`}
@@ -217,6 +219,8 @@ export default function CampaignDetail({
                 disabled={!!editor}
                 className="quiet"
                 aria-label={`${item.name} 수정`}
+                aria-expanded={editor?.anchor === `work:${item.id}`}
+                aria-controls={editorId}
                 onClick={() => editWork(item.strategyId, item.parentId, item)}
               >
                 수정
@@ -226,6 +230,8 @@ export default function CampaignDetail({
                   disabled={!!editor}
                   className="quiet"
                   aria-label={`${item.name} 세부 작업 추가`}
+                  aria-expanded={editor?.anchor === `subtask:${item.id}`}
+                  aria-controls={editorId}
                   onClick={() => editWork(item.strategyId, item.id)}
                 >
                   + 세부 작업
@@ -242,11 +248,13 @@ export default function CampaignDetail({
           </td>
         )}
       </tr>
+      {(editor?.anchor === `work:${item.id}` || editor?.anchor === `subtask:${item.id}`) && <tr className="inline-editor-row"><td className="inline-editor-cell" colSpan={c.canEdit ? 6 : 5}><div className="inline-editor-wrap">{editorAt(`work:${item.id}`)}{editorAt(`subtask:${item.id}`)}</div></td></tr>}
+      </Fragment>
     );
   };
   return (
     <>
-      {selectedWork && <ActivityDrawer key={selectedWork} campaignId={id} workId={selectedWork} onClose={() => setSelectedWork(undefined)} onSaved={load} onEdit={work => { setSelectedWork(undefined); editWork(work.strategyId, work.parentId, work); }} />}
+      {selectedWork && <ActivityDrawer key={selectedWork} campaignId={id} campaign={c} bootstrap={b} workId={selectedWork} onClose={() => setSelectedWork(undefined)} onSaved={load} />}
       <nav className="breadcrumb" aria-label="현재 위치">
         <Link href="/">캠페인</Link>
         <span>/</span>
@@ -278,11 +286,14 @@ export default function CampaignDetail({
             disabled={!!editor}
             className="secondary"
             onClick={editCampaign}
+            aria-expanded={editor?.anchor === "campaign"}
+            aria-controls={editorId}
           >
             캠페인 수정
           </button>
         )}
       </div>
+      {editorAt("campaign")}
       <nav className="tabs" aria-label="캠페인 메뉴">
         {[
           { key: "overview", label: "개요", path: "" },
@@ -302,17 +313,6 @@ export default function CampaignDetail({
         <p className="error" role="alert">
           {error}
         </p>
-      )}
-      {editor && (
-        <EntityForm
-          key={`${editor.path}-${editor.title}`}
-          {...editor}
-          onSaved={async () => {
-            await load();
-            setEditor(undefined);
-          }}
-          onCancel={() => setEditor(undefined)}
-        />
       )}
       {tab === "overview" && (
         <>
@@ -362,7 +362,7 @@ export default function CampaignDetail({
               발생 비용 <strong>{c.actualIncurredCostKrw === null ? "미입력" : krw(c.actualIncurredCostKrw)}</strong> · 지급액 <strong>미연결</strong>
             </div>
           </div>
-          <CampaignActuals campaign={c} onEdit={editActuals} disabled={!!editor} />
+          <CampaignActuals campaign={c} onEdit={editActuals} disabled={!!editor}>{editorAt("actuals")}</CampaignActuals>
           <div className="section-head">
             <div>
               <h2>전략과 활동</h2>
@@ -376,11 +376,14 @@ export default function CampaignDetail({
                 disabled={!!editor}
                 className="primary"
                 onClick={() => editStrategy()}
+                aria-expanded={editor?.anchor === "strategy:new"}
+                aria-controls={editorId}
               >
                 + 전략 추가
               </button>
             )}
           </div>
+          {editorAt("strategy:new")}
           {c.strategies.length === 0 && (
             <div className="empty">
               <h3>첫 전략을 추가해 주세요.</h3>
@@ -422,6 +425,8 @@ export default function CampaignDetail({
                           disabled={!!editor}
                           className="secondary compact"
                           aria-label={`${strategy.name} 활동 추가`}
+                          aria-expanded={editor?.anchor === `strategy:${strategy.id}` && !editor.editing}
+                          aria-controls={editorId}
                           onClick={() => editWork(strategy.id, null)}
                         >
                           + 활동 추가
@@ -430,6 +435,8 @@ export default function CampaignDetail({
                           disabled={!!editor}
                           className="quiet"
                           aria-label={`${strategy.name} 수정`}
+                          aria-expanded={editor?.anchor === `strategy:${strategy.id}` && !!editor.editing}
+                          aria-controls={editorId}
                           onClick={() => editStrategy(strategy)}
                         >
                           수정
@@ -444,10 +451,11 @@ export default function CampaignDetail({
                       </div>
                     )}
                   </div>
+                  {editorAt(`strategy:${strategy.id}`)}
                   <StrategyPlan strategy={strategy} workItems={c.workItems} campaign={c} />
                   {activities.length ? (
                     <div
-                      className="table-scroll"
+                      className="table-scroll inline-edit-table"
                       tabIndex={0}
                       aria-label={`${strategy.name} 활동 표`}
                     >
@@ -501,12 +509,12 @@ export default function CampaignDetail({
       {tab === "schedule" && (
         <>
           <section className="panel"><h2>전략별 계획 기간</h2>{c.strategies.map(strategy => <div key={strategy.id}><h3>{strategy.name}</h3><StrategyPlan strategy={strategy} workItems={c.workItems} campaign={c} /></div>)}</section>
-          <ScheduleTimeline campaign={c} onSelect={setSelectedWork} onAdd={strategyId => editWork(strategyId, null)} disabled={!!editor} />
+          <ScheduleTimeline campaign={c} onSelect={setSelectedWork} onAdd={strategyId => editWork(strategyId, null, undefined, `schedule:${strategyId}`)} renderStrategyEditor={strategyId => editorAt(`schedule:${strategyId}`)} disabled={!!editor} />
         </>
       )}
       {tab === "budget" && (
         <>
-          <CampaignActuals campaign={c} onEdit={editActuals} disabled={!!editor} />
+          <CampaignActuals campaign={c} onEdit={editActuals} disabled={!!editor}>{editorAt("actuals")}</CampaignActuals>
           <div className="stats-grid three">
             <div className="metric">
               <span>승인 예산 한도</span>

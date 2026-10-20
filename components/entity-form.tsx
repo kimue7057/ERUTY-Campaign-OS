@@ -1,5 +1,5 @@
 "use client";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { api } from "./api";
 
 export type Field = {
@@ -19,6 +19,9 @@ type Props = {
   onCancel: () => void;
   editing?: boolean;
   hint?: string;
+  id?: string;
+  autoFocus?: boolean;
+  onBusyChange?: (busy: boolean) => void;
 };
 export function EntityForm({
   title,
@@ -29,12 +32,19 @@ export function EntityForm({
   onCancel,
   editing,
   hint,
+  id: sectionId,
+  autoFocus = false,
+  onBusyChange,
 }: Props) {
   const id = useId();
+  const section = useRef<HTMLElement>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (autoFocus) section.current?.querySelector<HTMLElement>("input:not(:disabled), select:not(:disabled), textarea:not(:disabled)")?.focus({ preventScroll: true });
+  }, [autoFocus]);
   return (
-    <section className="editor" aria-label={title}>
+    <section ref={section} id={sectionId} className="editor" aria-label={title}>
       <div className="section-head">
         <h2>{title}</h2>
         <button
@@ -50,6 +60,7 @@ export function EntityForm({
         onSubmit={async (e) => {
           e.preventDefault();
           setBusy(true);
+          onBusyChange?.(true);
           setError("");
           const form = new FormData(e.currentTarget);
           const data: Record<string, unknown> = { ...values };
@@ -73,6 +84,7 @@ export function EntityForm({
             );
           } finally {
             setBusy(false);
+            onBusyChange?.(false);
           }
         }}
       >
