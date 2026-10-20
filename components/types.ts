@@ -18,6 +18,9 @@ export type Strategy = {
   name: string;
   sortOrder: number;
   revision: number;
+  planStart: string | null;
+  planEnd: string | null;
+  budgetCeilingKrw: string | null;
 };
 export type Work = {
   id: string;
@@ -25,6 +28,7 @@ export type Work = {
   parentId: string | null;
   kind: "ACTIVITY" | "SUBTASK";
   name: string;
+  description: string | null;
   ownerId: string | null;
   owner: Person | null;
   status: string;
@@ -47,6 +51,11 @@ export type Campaign = {
   budgetCeilingKrw: string;
   targetNetSalesKrw: string;
   targetErutyRevenueKrw: string;
+  actualNetSalesKrw: string | null;
+  actualErutyRevenueKrw: string | null;
+  actualIncurredCostKrw: string | null;
+  actualsAsOfDate: string | null;
+  actualsNote: string | null;
   vatPolicy: string;
   isDemo: boolean;
   revision: number;
@@ -54,6 +63,10 @@ export type Campaign = {
   strategies: Strategy[];
   workItems: Work[];
   summary: {
+    allocatedStrategyKrw: string;
+    unallocatedStrategyKrw: string;
+    strategyOverBudget: boolean;
+    unbudgetedStrategyCount: number;
     allocatedPlanKrw: string;
     unallocatedPlanKrw: string;
     overBudget: boolean;

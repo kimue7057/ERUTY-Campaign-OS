@@ -5,7 +5,7 @@ import { api } from "./api";
 export type Field = {
   key: string;
   label: string;
-  type?: "text" | "date" | "money" | "select" | "number";
+  type?: "text" | "date" | "money" | "select" | "number" | "textarea";
   options?: { value: string; label: string }[];
   nullable?: boolean;
   disabled?: boolean;
@@ -18,6 +18,7 @@ type Props = {
   onSaved: (value: { id: string }) => void | Promise<unknown>;
   onCancel: () => void;
   editing?: boolean;
+  hint?: string;
 };
 export function EntityForm({
   title,
@@ -27,6 +28,7 @@ export function EntityForm({
   onSaved,
   onCancel,
   editing,
+  hint,
 }: Props) {
   const id = useId();
   const [error, setError] = useState("");
@@ -80,7 +82,9 @@ export function EntityForm({
               <label htmlFor={`${id}-${f.key}`}>
                 <span>{f.label}</span>
               </label>
-              {f.type === "select" ? (
+              {f.type === "textarea" ? (
+                <textarea id={`${id}-${f.key}`} name={f.key} disabled={busy || f.disabled} required={!f.nullable} rows={6} maxLength={10000} defaultValue={String(values[f.key] ?? "")} />
+              ) : f.type === "select" ? (
                 <select
                   id={`${id}-${f.key}`}
                   name={f.key}
@@ -137,7 +141,7 @@ export function EntityForm({
         )}
         <div className="form-actions">
           <p className="muted">
-            금액은 원화 정수, 날짜는 한국 기준 계획일입니다.
+            {hint ?? "금액은 원화 정수, 날짜는 한국 기준 계획일입니다."}
           </p>
           <button className="primary" disabled={busy}>
             {busy ? "저장 중…" : "저장"}

@@ -52,6 +52,7 @@ export function campaignFields(b: Bootstrap, editing = false): Field[] {
 export function workFields(b: Bootstrap, activity: boolean): Field[] {
   return [
     { key: "name", label: activity ? "활동명" : "세부 작업명" },
+    { key: "description", label: activity ? "활동 내용" : "세부 작업 내용", type: "textarea", nullable: true },
     {
       key: "ownerId",
       label: "담당자",
