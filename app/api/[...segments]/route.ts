@@ -5,6 +5,9 @@ import { DomainError, ensure } from "@/lib/errors";
 import { idSchema } from "@/lib/validation";
 import { serialize } from "@/lib/domain";
 import * as service from "@/lib/service";
+import * as records from "@/lib/work-records";
+import * as actuals from "@/lib/campaign-actuals";
+import { requireSameOrigin } from "@/lib/request-security";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,6 +19,7 @@ async function handle(request: NextRequest, context: Context) {
     const { segments: s } = await context.params;
     const method = request.method;
     if (method !== "GET") {
+      if (process.env.AUTH_MODE === "supabase") requireSameOrigin(request);
       const origin = request.headers.get("origin");
       ensure(
         !origin ||
@@ -26,7 +30,8 @@ async function handle(request: NextRequest, context: Context) {
     }
     const id = s[1] ? idSchema.parse(s[1]) : undefined;
     const childId = s[3] ? idSchema.parse(s[3]) : undefined;
-    ensure(s.length <= 4, 404, "요청한 경로를 찾을 수 없습니다.");
+    ensure(s.length <= 6, 404, "요청한 경로를 찾을 수 없습니다.");
+    const recordId = s.length === 6 && s[4] === "journals" ? idSchema.parse(s[5]) : undefined;
     let data: unknown;
     if (method === "POST" || method === "PATCH") {
       ensure(
@@ -44,6 +49,8 @@ async function handle(request: NextRequest, context: Context) {
     if (method === "GET") {
       if (s[0] === "bootstrap" && s.length === 1)
         result = await service.bootstrap(actor);
+      else if (s[0] === "dashboard-summary" && s.length === 1)
+        result = await actuals.dashboardActuals(actor);
       else if (s[0] === "brands" && s.length === 1)
         result = (await service.bootstrap(actor)).brands;
       else if (s[0] === "brand-countries" && s.length === 1)
@@ -51,6 +58,17 @@ async function handle(request: NextRequest, context: Context) {
       else if (s[0] === "campaigns" && s.length === 1)
         result = await service.campaigns(actor);
       else if (s[0] === "campaigns" && id) {
+        const cursor = request.nextUrl.searchParams.get("cursor");
+        const journal = request.nextUrl.searchParams.get("journalId");
+        if (s[2] === "actuals" && s.length === 3)
+          result = await actuals.actualsHistory(actor, id, cursor ? idSchema.parse(cursor) : undefined);
+        else if (s[2] === "work-items" && childId && s.length === 4)
+          result = await records.workDetail(actor, id, childId);
+        else if (s[2] === "work-items" && childId && s.length === 5 && s[4] === "journals")
+          result = await records.journals(actor, id, childId, cursor ? idSchema.parse(cursor) : undefined);
+        else if (s[2] === "work-items" && childId && s.length === 5 && s[4] === "history")
+          result = await records.workHistory(actor, id, childId, cursor ? idSchema.parse(cursor) : undefined, journal ? idSchema.parse(journal) : undefined);
+        else {
         const row = await service.detail(actor, id);
         if (s.length === 2) result = row;
         else if (s.length === 3 && s[2] === "strategies")
@@ -59,8 +77,18 @@ async function handle(request: NextRequest, context: Context) {
           result = row.workItems;
         else if (s.length === 3 && s[2] === "summary") result = row.summary;
         else throw new DomainError(404, "요청한 경로를 찾을 수 없습니다.");
+        }
       } else throw new DomainError(404, "요청한 경로를 찾을 수 없습니다.");
     } else if (method === "POST" || method === "PATCH") {
+      if (s[0] === "campaigns" && id && s[2] === "actuals" && s.length === 3 && method === "PATCH")
+        result = await actuals.saveActuals(actor, id, data);
+      else if (s[0] === "campaigns" && id && s[2] === "work-items" && childId && s.length === 5 && s[4] === "journals" && method === "POST")
+        result = await records.saveJournal(actor, id, childId, data);
+      else if (s[0] === "campaigns" && id && s[2] === "work-items" && childId && s.length === 6 && recordId && method === "PATCH")
+        result = await records.saveJournal(actor, id, childId, data, recordId);
+      else if (s[0] === "campaigns" && id && s[2] === "work-items" && childId && s.length === 5 && s[4] === "description" && method === "PATCH")
+        result = await records.saveDescription(actor, id, childId, data);
+      else {
       ensure(
         method === "POST"
           ? s.length === 1 || s.length === 3
@@ -79,6 +107,7 @@ async function handle(request: NextRequest, context: Context) {
       else if (s[0] === "campaigns" && id && s[2] === "work-items")
         result = await service.saveWork(actor, id, data, childId);
       else throw new DomainError(404, "요청한 경로를 찾을 수 없습니다.");
+      }
     } else if (method === "DELETE") {
       const revision = Number(request.nextUrl.searchParams.get("revision"));
       ensure(
@@ -94,9 +123,9 @@ async function handle(request: NextRequest, context: Context) {
       else if (s[0] === "campaigns" && s.length === 2) {
         // An editor may delete an empty campaign through the same campaign write gate.
         result = await service.remove(actor, "campaign", id, revision, id);
-      } else if (s[0] === "campaigns" && childId && s[2] === "strategies")
+      } else if (s[0] === "campaigns" && childId && s[2] === "strategies" && s.length === 4)
         result = await service.remove(actor, "strategy", childId, revision, id);
-      else if (s[0] === "campaigns" && childId && s[2] === "work-items")
+      else if (s[0] === "campaigns" && childId && s[2] === "work-items" && s.length === 4)
         result = await service.remove(actor, "work", childId, revision, id);
       else throw new DomainError(404, "요청한 경로를 찾을 수 없습니다.");
     } else throw new DomainError(405, "지원하지 않는 요청 방식입니다.");

@@ -12,6 +12,8 @@
 | node-postgres | lockfile 참조 | MIT | PostgreSQL 드라이버 |
 | Zod | 4.6.6 | MIT | 한국어 서버 검증 |
 | jose | 6.2.12 | MIT | 인증 프록시 JWT 검증 |
+| @supabase/ssr | 0.12.7 | MIT | 서버 전용 쿠키 세션 |
+| @supabase/supabase-js | 2.117.3 | MIT | Supabase Auth 서버 검증 |
 | Vitest | 5.0.3 | MIT | 단위·DB 통합 테스트 |
 | Playwright | 1.64.0 | Apache-2.0 | 브라우저 CRUD·스크린샷 |
 | embedded-postgres | 18.4.0-beta.17 | MIT wrapper / PostgreSQL License | 개발 전용 실제 PostgreSQL |

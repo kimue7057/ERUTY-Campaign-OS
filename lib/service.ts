@@ -13,7 +13,7 @@ import {
 import { Prisma } from "../generated/prisma/client";
 
 type Tx = Prisma.TransactionClient;
-const transaction = <T>(fn: (tx: Tx) => Promise<T>) =>
+export const transaction = <T>(fn: (tx: Tx) => Promise<T>) =>
   db.$transaction(fn, { isolationLevel: "Serializable" });
 function version(input: { revision?: number }, current: { revision: number }) {
   ensure(
@@ -22,7 +22,7 @@ function version(input: { revision?: number }, current: { revision: number }) {
     "다른 사용자가 수정했습니다. 새로고침 후 다시 시도해 주세요.",
   );
 }
-async function audit(
+export async function audit(
   tx: Tx,
   actor: Actor,
   entityType: string,
@@ -291,6 +291,12 @@ export async function saveStrategy(
 ) {
   await authorizeCampaign(actor, campaignId, true);
   const { revision, ...data } = strategySchema.parse(input);
+  const fields = {
+    ...data,
+    planStart: data.planStart === undefined ? undefined : data.planStart === null ? null : toDate(data.planStart),
+    planEnd: data.planEnd === undefined ? undefined : data.planEnd === null ? null : toDate(data.planEnd),
+    budgetCeilingKrw: data.budgetCeilingKrw === undefined ? undefined : data.budgetCeilingKrw === null ? null : BigInt(data.budgetCeilingKrw),
+  };
   return transaction(async (tx) => {
     const before = id
       ? await tx.strategy.findFirst({ where: { id, campaignId } })
@@ -302,9 +308,9 @@ export async function saveStrategy(
     const after = id
       ? await tx.strategy.update({
           where: { id },
-          data: { ...data, revision: { increment: 1 } },
+          data: { ...fields, revision: { increment: 1 } },
         })
-      : await tx.strategy.create({ data: { ...data, campaignId } });
+      : await tx.strategy.create({ data: { ...fields, campaignId } });
     await audit(
       tx,
       actor,
@@ -485,6 +491,7 @@ export async function remove(
         "소속 세부 작업을 먼저 삭제해 주세요.",
       );
       await tx.budgetLine.deleteMany({ where: { activityId: id } });
+      ensure((await tx.workJournal.count({ where: { workItemId: id } })) === 0, 409, "업무일지가 있는 활동은 기록 보존을 위해 삭제할 수 없습니다.");
       await tx.workItem.delete({ where: { id } });
       await audit(tx, actor, "WorkItem", id, "DELETE", before, null);
     }

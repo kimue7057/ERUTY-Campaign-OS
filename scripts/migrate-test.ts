@@ -6,6 +6,6 @@ if (!url || !new URL(url).pathname.endsWith("/eruty_test"))
 const result = spawnSync(
   process.execPath,
   ["node_modules/prisma/build/index.js", "migrate", "deploy"],
-  { env: { ...process.env, DATABASE_URL: url }, stdio: "inherit" },
+  { env: { ...process.env, DATABASE_URL: url, DIRECT_URL: url }, stdio: "inherit" },
 );
 process.exitCode = result.status ?? 1;

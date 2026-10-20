@@ -20,3 +20,5 @@ evidence/
 exports/
 generated/
 .local-postgres/
+.vercel/
+.supabase/

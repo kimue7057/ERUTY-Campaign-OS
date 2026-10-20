@@ -3,6 +3,51 @@ import { mkdirSync } from "node:fs";
 const DEMO = "10000000-0000-4000-8000-000000000001";
 const screenshots = "docs/screenshots";
 
+test("전략 기간·한도 입력 수정 조회와 일정·예산 연결", async ({ page }) => {
+  const name = `DEMO 전략 계획 ${Date.now()}`;
+  await page.goto(`/campaigns/${DEMO}`);
+  await page.getByRole("button", { name: "+ 전략 추가", exact: true }).click();
+  await page.getByLabel("전략명", { exact: true }).fill(name);
+  await page.getByLabel("전략 시작일", { exact: true }).fill("2026-10-03");
+  await page.getByLabel("전략 종료일", { exact: true }).fill("2026-10-25");
+  await page.getByLabel("전략 예산 한도 (원)", { exact: true }).fill("5000000");
+  await page.screenshot({ path: `${screenshots}/10-strategy-create.png`, fullPage: true });
+  await page.getByRole("button", { name: "저장", exact: true }).click();
+  const panel = page.locator(".strategy-panel").filter({ hasText: name });
+  await expect(panel).toContainText("2026-10-03 ~ 2026-10-25 · 23일");
+  await expect(panel).toContainText("5,000,000원");
+  await expect(page.locator(".metric").filter({ hasText: "전략 배정 예산" })).toContainText("5,000,000원");
+  await expect(page.locator(".overview-strip")).toContainText("10,000,000원");
+  await panel.getByRole("button", { name: `${name} 수정`, exact: true }).click();
+  await expect(page.getByLabel("전략 시작일", { exact: true })).toHaveValue("2026-10-03");
+  await page.getByLabel("전략 예산 한도 (원)", { exact: true }).fill("4000000");
+  await page.getByRole("button", { name: "저장", exact: true }).click();
+  await expect(panel).toContainText("4,000,000원");
+  await expect(page.locator(".metric").filter({ hasText: "전략 배정 예산" })).toContainText("4,000,000원");
+  await expect(page.locator(".overview-strip")).toContainText("11,000,000원");
+  await page.screenshot({ path: `${screenshots}/12-campaign-strategy-budget.png`, fullPage: true });
+  await panel.getByRole("button", { name: `${name} 활동 추가`, exact: true }).click();
+  await expect(page.getByLabel("계획 시작일", { exact: true })).toHaveValue("2026-10-03");
+  await expect(page.getByLabel("계획 종료일", { exact: true })).toHaveValue("2026-10-25");
+  await page.getByRole("button", { name: "닫기", exact: true }).click();
+  await page.getByRole("link", { name: "일정", exact: true }).click();
+  const schedule = page.locator(".panel").filter({ hasText: "전략별 계획 기간" });
+  await expect(schedule).toContainText("2026-10-03 ~ 2026-10-25");
+  await page.getByRole("link", { name: "예산 · 비용", exact: true }).click();
+  await expect(page.locator(".panel").filter({ hasText: "전략별 예산 한도" })).toContainText("4,000,000원");
+  await expect(page.locator(".metric").filter({ hasText: "전략 배정 예산" })).toContainText("4,000,000원");
+  await expect(page.locator(".metric").filter({ hasText: "캠페인 남은 예산" })).toContainText("11,000,000원");
+  await page.goto(`/campaigns/${DEMO}`);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(panel).toContainText("2026-10-03 ~ 2026-10-25 · 23일");
+  await panel.screenshot({ path: `${screenshots}/11-strategy-plan-mobile.png` });
+  await panel.getByRole("button", { name: `${name} 삭제`, exact: true }).click();
+  await panel.getByRole("button", { name: `${name} 삭제 확인`, exact: true }).click();
+  await expect(panel).toHaveCount(0);
+  await expect(page.locator(".metric").filter({ hasText: "전략 배정 예산" })).toContainText("0원");
+  await expect(page.locator(".overview-strip")).toContainText("15,000,000원");
+});
+
 test("DEMO 목록·개요·일정·예산·브랜드·입력 화면과 모바일 표시", async ({
   page,
 }) => {
@@ -128,6 +173,7 @@ test("캠페인·전략·활동·선택적 세부 작업 생성 수정 조회 �
   const campaignUrl = page.url();
   await page.getByRole("button", { name: "+ 전략 추가", exact: true }).click();
   await page.getByLabel("전략명", { exact: true }).fill("테스트 전략");
+  await page.getByLabel("전략 예산 한도 (원)", { exact: true }).fill("5000000");
   await page.getByRole("button", { name: "저장", exact: true }).click();
   await page
     .getByRole("button", { name: "테스트 전략 활동 추가", exact: true })
@@ -191,8 +237,9 @@ test("캠페인·전략·활동·선택적 세부 작업 생성 수정 조회 �
   ).toBeVisible();
   await page.unroute(workCreatePath);
   await expect(
-    page.locator(".metric").filter({ hasText: "활동 계획 예산" }),
-  ).toContainText("3,500,000원");
+    page.locator(".metric").filter({ hasText: "전략 배정 예산" }),
+  ).toContainText("5,000,000원");
+  await expect(page.locator(".overview-strip")).toContainText("10,000,000원");
   await page
     .getByRole("button", { name: "독립 활동 수정", exact: true })
     .click();
@@ -210,6 +257,7 @@ test("캠페인·전략·활동·선택적 세부 작업 생성 수정 조회 �
   await expect(row).toContainText("2026-10-12");
   await expect(row).toContainText("진행 중");
   await expect(row).toContainText("4,000,000원");
+  await expect(page.locator(".overview-strip")).toContainText("10,000,000원");
   await page.getByRole("button", { name: "캠페인 수정", exact: true }).click();
   await page
     .getByLabel("이루티 매출 목표 (원)", { exact: true })
