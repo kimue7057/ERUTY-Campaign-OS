@@ -20,6 +20,7 @@ type SummaryInput = {
   planStart: Date;
   planEnd: Date;
   budgetCeilingKrw: bigint;
+  strategies: { budgetCeilingKrw: bigint | null }[];
   budgetLines: { plannedAmountKrw: bigint }[];
   workItems: {
     id: string;
@@ -35,7 +36,15 @@ export function campaignSummary(c: SummaryInput, today = seoulToday()) {
     0n,
   );
   const activities = c.workItems.filter((w) => w.kind === "ACTIVITY");
+  const strategyAllocated = c.strategies.reduce(
+    (sum, strategy) => sum + (strategy.budgetCeilingKrw ?? 0n),
+    0n,
+  );
   return {
+    allocatedStrategyKrw: strategyAllocated.toString(),
+    unallocatedStrategyKrw: (c.budgetCeilingKrw - strategyAllocated).toString(),
+    strategyOverBudget: strategyAllocated > c.budgetCeilingKrw,
+    unbudgetedStrategyCount: c.strategies.filter(s => s.budgetCeilingKrw === null).length,
     allocatedPlanKrw: allocated.toString(),
     unallocatedPlanKrw: (c.budgetCeilingKrw - allocated).toString(),
     overBudget: allocated > c.budgetCeilingKrw,

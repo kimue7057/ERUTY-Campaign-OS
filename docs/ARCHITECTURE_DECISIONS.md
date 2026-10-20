@@ -20,7 +20,8 @@ Brand -> BrandCountry -> Campaign -> Strategy -> WorkItem(ACTIVITY) -> WorkItem(
 ## 핵심 계산
 - allocated = SUM(activity budget lines) + SUM(campaign common lines)
 - subtask allocation은 위 SUM에 포함하지 않음 (분할 배정만 의미)
-- budget unallocated = ceiling - allocated; negative -> 초과 경고
+- activity-plan unallocated = ceiling - allocated; negative -> 활동 계획 초과 경고
+- 캠페인 개요와 예산 탭의 전략 배정 예산 = SUM(strategy budget ceilings). 캠페인 남은 예산 = 캠페인 한도 - 전략 배정 예산; negative -> 전략 배정 초과 경고. 전략 미설정 예산은 합계에서 제외하고 개수를 표시한다. 전략 내부의 남은 예산은 전략 한도 - 활동 배정 합계이다. 전략 배정과 활동 계획을 합산하거나 캠페인 잔여에서 두 번 차감하지 않는다. (2026-10-13 사용자 확정)
 - incurred = SUM(effective approved expenses); draft/reversed 제외
 - paid = SUM(effective cleared payments) net of reversals
 - unpaid = incurred - paid, 동일 지급 대상 범위에서 계산
@@ -35,6 +36,8 @@ Brand -> BrandCountry -> Campaign -> Strategy -> WorkItem(ACTIVITY) -> WorkItem(
 - successor scheduling changes need **preview then explicit confirm**.
 
 ## 보안 및 운영
+
+- 2026-10-15 사용자 요청: 캠페인별 실제 순판매액·이루티 매출·발생 비용을 집계 기준일과 함께 수기 누적값으로 저장한다. 목표/예산과 별도이며 비용 원장 승인·지급액으로 취급하지 않는다. 기존 값 대체와 감사 기록으로 중복 가산을 방지하며 미입력(null)과 0원을 구분한다. 대시보드는 서버에서 조회 권한 범위의 입력 금액만 합산한다.
 - Internal login required for all persisted application data; server-side campaign membership/role checks.
 - Server-validated finance writes and traceable audit events; private attachment storage and signed read.
 - Demo records must be labeled clearly, isolated from production.

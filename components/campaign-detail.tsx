@@ -6,6 +6,10 @@ import { api } from "./api";
 import { EntityForm, DeleteButton, type Field } from "./entity-form";
 import { campaignFields, workFields } from "./campaign-fields";
 import { StrategyPlan } from "./strategy-plan";
+import { ActivityDrawer } from "./activity-drawer";
+import { CampaignActuals } from "./campaign-actuals";
+import { actualFields } from "../lib/actuals";
+import { seoulToday } from "../lib/domain";
 import {
   krw,
   day,
@@ -21,6 +25,7 @@ type Editor = {
   fields: Field[];
   values: Record<string, unknown>;
   editing?: boolean;
+  hint?: string;
 };
 export default function CampaignDetail({
   id,
@@ -33,6 +38,7 @@ export default function CampaignDetail({
   const [b, setB] = useState<Bootstrap>();
   const [error, setError] = useState("");
   const [editor, setEditor] = useState<Editor>();
+  const [selectedWork, setSelectedWork] = useState<string>();
   const router = useRouter();
   const load = () =>
     Promise.all([api<Campaign>(`campaigns/${id}`), api<Bootstrap>("bootstrap")])
@@ -118,6 +124,16 @@ export default function CampaignDetail({
           }
         : { name: "", sortOrder: c.strategies.length, planStart: day(c.planStart), planEnd: day(c.planEnd), budgetCeilingKrw: null },
     });
+  const editActuals = () => setEditor({
+    title: "실제 매출·발생 비용 입력", path: `campaigns/${id}/actuals`, editing: true,
+    hint: "집계 기준일까지의 누적 금액을 입력하세요. 기존 금액을 대체하며, 빈 금액은 미입력으로 저장합니다.",
+    fields: [
+      ...actualFields.map(({ key, label }) => ({ key, label: `${label} (원)`, type: "money" as const, nullable: true })),
+      { key: "actualsAsOfDate", label: "집계 기준일", type: "date", nullable: true },
+      { key: "actualsNote", label: "집계 메모", type: "textarea", nullable: true },
+    ],
+    values: { actualNetSalesKrw: c.actualNetSalesKrw, actualErutyRevenueKrw: c.actualErutyRevenueKrw, actualIncurredCostKrw: c.actualIncurredCostKrw, actualsAsOfDate: c.actualsAsOfDate ? day(c.actualsAsOfDate) : seoulToday(), actualsNote: c.actualsNote, revision: c.revision },
+  });
   const editWork = (
     strategyId: string,
     parentId: string | null,
@@ -141,6 +157,7 @@ export default function CampaignDetail({
         parentId,
         kind: activity ? "ACTIVITY" : "SUBTASK",
         name: item?.name ?? "",
+        description: item?.description ?? null,
         ownerId: item?.ownerId ?? null,
         status: item?.status ?? "PLANNED",
         plannedStart: day(item?.plannedStart ?? strategy?.planStart ?? c.planStart),
@@ -168,7 +185,7 @@ export default function CampaignDetail({
             className={`work-name ${item.kind === "SUBTASK" ? "subtask-name" : ""}`}
           >
             {item.kind === "SUBTASK" && <span aria-hidden="true">↳ </span>}
-            {item.name}
+            <button className="work-link" disabled={!!editor} onClick={() => setSelectedWork(item.id)} aria-label={`${item.name} 상세 보기`}>{item.name}</button>
           </span>
           {outside && <span className="badge warning">캠페인 기간 밖</span>}
         </td>
@@ -228,6 +245,7 @@ export default function CampaignDetail({
   };
   return (
     <>
+      {selectedWork && <ActivityDrawer key={selectedWork} campaignId={id} workId={selectedWork} onClose={() => setSelectedWork(undefined)} onSaved={load} onEdit={work => { setSelectedWork(undefined); editWork(work.strategyId, work.parentId, work); }} />}
       <nav className="breadcrumb" aria-label="현재 위치">
         <Link href="/">캠페인</Link>
         <span>/</span>
@@ -306,25 +324,26 @@ export default function CampaignDetail({
               </p>
             </div>
             <div className="metric">
-              <span>활동 배정 예산</span>
+              <span>전략 배정 예산</span>
               <strong className="amount">
-                {krw(c.summary.allocatedPlanKrw)}
+                {krw(c.summary.allocatedStrategyKrw)}
               </strong>
-              <Link href={`/campaigns/${id}/budget`}>활동별 계획 보기 →</Link>
+              <Link href={`/campaigns/${id}/budget`}>전략별 배정 보기 →</Link>
+              {c.summary.unbudgetedStrategyCount > 0 && <p>예산 미설정 전략 {c.summary.unbudgetedStrategyCount}개</p>}
             </div>
             <div className="metric">
               <span>순판매액 목표</span>
               <strong className="amount">{krw(c.targetNetSalesKrw)}</strong>
-              <p>실제 순판매액: 미연결</p>
+              <p>실제 순판매액: {c.actualNetSalesKrw === null ? "미입력" : krw(c.actualNetSalesKrw)}</p>
             </div>
             <div className="metric">
               <span>이루티 매출 목표</span>
               <strong className="amount">{krw(c.targetErutyRevenueKrw)}</strong>
-              <p>실제 이루티 매출: 미연결</p>
+              <p>실제 이루티 매출: {c.actualErutyRevenueKrw === null ? "미입력" : krw(c.actualErutyRevenueKrw)}</p>
             </div>
           </div>
           <div className="overview-strip">
-            <div>캠페인 남은 예산 <strong>{krw(c.summary.unallocatedPlanKrw)}</strong>{c.summary.overBudget && <span className="badge warning">한도 초과</span>}</div>
+            <div>캠페인 남은 예산 <strong>{krw(c.summary.unallocatedStrategyKrw)}</strong>{c.summary.strategyOverBudget && <span className="badge warning">한도 초과</span>}</div>
             <div>
               <span className="dot green" />
               활동 <strong>{c.summary.activityCount}</strong>
@@ -339,9 +358,10 @@ export default function CampaignDetail({
               기준 일정 <strong>미설정</strong>
             </div>
             <div>
-              발생 비용 · 지급액 <strong>미연결</strong>
+              발생 비용 <strong>{c.actualIncurredCostKrw === null ? "미입력" : krw(c.actualIncurredCostKrw)}</strong> · 지급액 <strong>미연결</strong>
             </div>
           </div>
+          <CampaignActuals campaign={c} onEdit={editActuals} disabled={!!editor} />
           <div className="section-head">
             <div>
               <h2>전략과 활동</h2>
@@ -528,7 +548,7 @@ export default function CampaignDetail({
                             }
                           >
                             {w.kind === "SUBTASK" ? "↳ " : ""}
-                            {w.name}
+                            <button className="work-link" onClick={() => setSelectedWork(w.id)} aria-label={`${w.name} 상세 보기`}>{w.name}</button>
                             {(day(w.plannedStart) < day(c.planStart) ||
                               day(w.plannedEnd) > day(c.planEnd)) && (
                               <span className="badge warning">
@@ -558,6 +578,7 @@ export default function CampaignDetail({
       )}
       {tab === "budget" && (
         <>
+          <CampaignActuals campaign={c} onEdit={editActuals} disabled={!!editor} />
           <div className="stats-grid three">
             <div className="metric">
               <span>승인 예산 한도</span>
@@ -567,30 +588,33 @@ export default function CampaignDetail({
               </p>
             </div>
             <div className="metric">
-              <span>활동에 배정한 예산</span>
+              <span>전략 배정 예산</span>
               <strong className="amount">
-                {krw(c.summary.allocatedPlanKrw)}
+                {krw(c.summary.allocatedStrategyKrw)}
               </strong>
+              <p>전략별 예산 한도 합계</p>
+              {c.summary.unbudgetedStrategyCount > 0 && <p>예산 미설정 전략 {c.summary.unbudgetedStrategyCount}개</p>}
             </div>
             <div
-              className={`metric ${c.summary.overBudget ? "over-budget" : ""}`}
+              className={`metric ${c.summary.strategyOverBudget ? "over-budget" : ""}`}
             >
               <span>
-                {c.summary.overBudget ? "예산 한도 초과" : "캠페인 남은 예산"}
+                {c.summary.strategyOverBudget ? "예산 한도 초과" : "캠페인 남은 예산"}
               </span>
               <strong className="amount">
-                {krw(c.summary.unallocatedPlanKrw)}
+                {krw(c.summary.unallocatedStrategyKrw)}
               </strong>
-              <p>한도 − 활동 계획 합계</p>
+              <p>캠페인 한도 − 전략 배정 합계</p>
             </div>
           </div>
           <section className="panel"><h2>전략별 예산 한도 · 잔여</h2>{c.strategies.map(strategy => <div key={strategy.id}><h3>{strategy.name}</h3><StrategyPlan strategy={strategy} workItems={c.workItems} campaign={c} /></div>)}</section>
           <aside className="note">
             <strong>기초 예산 계획</strong>
             <p>
-              활동 기본 계획 예산만 저장·합산합니다. 세부 작업 배분·공통비
-              편집과 계약·발생 비용·지급·증빙 관리는 준비 중입니다. 실제 비용과
-              지급액은 미연결입니다.
+              캠페인 배정·잔여는 전략 예산을 기준으로 표시하며, 전략 잔여는
+              소속 활동 예산을 차감합니다. 세부 작업 배분·공통비
+              편집과 계약·활동별 발생 비용·지급·증빙 관리는 준비 중입니다.
+              캠페인 전체의 수기 발생 비용은 위 실적에 표시하며, 활동별 비용 원장과 지급액은 미연결입니다.
             </p>
             <Link href={`/campaigns/${id}`}>활동 예산 수정 →</Link>
           </aside>
@@ -620,7 +644,7 @@ export default function CampaignDetail({
                       .map((w) => (
                         <tr key={w.id}>
                           <td>{s.name}</td>
-                          <td>{w.name}</td>
+                          <td><button className="work-link" onClick={() => setSelectedWork(w.id)} aria-label={`${w.name} 상세 보기`}>{w.name}</button></td>
                           <td className="money-cell">
                             {krw(
                               w.budgetLines

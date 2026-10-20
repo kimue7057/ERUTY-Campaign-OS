@@ -71,12 +71,37 @@ describe("기초 데이터 검증", () => {
   });
 });
 describe("정확한 계획 집계", () => {
+  it("캠페인 잔여는 전략 배정 합계로 계산하고 활동을 중복 차감하지 않는다", () => {
+    const input = {
+      planStart: toDate("2026-10-01"), planEnd: toDate("2026-10-31"),
+      budgetCeilingKrw: 2500000n,
+      strategies: [{ budgetCeilingKrw: 100000n }, { budgetCeilingKrw: 1000000n }, { budgetCeilingKrw: null }],
+      budgetLines: [{ plannedAmountKrw: 100000n }], workItems: [],
+    };
+    expect(campaignSummary(input)).toMatchObject({
+      allocatedStrategyKrw: "1100000", unallocatedStrategyKrw: "1400000",
+      strategyOverBudget: false, unbudgetedStrategyCount: 1,
+      allocatedPlanKrw: "100000",
+    });
+    expect(campaignSummary({ ...input, budgetLines: [{ plannedAmountKrw: 500000n }] }).unallocatedStrategyKrw).toBe("1400000");
+    expect(campaignSummary({ ...input, strategies: [] }).unallocatedStrategyKrw).toBe("2500000");
+    expect(campaignSummary({ ...input, strategies: [{ budgetCeilingKrw: 0n }] }).unbudgetedStrategyCount).toBe(0);
+  });
+  it("전략 배정 초과와 큰 원화 합계를 정밀하게 계산한다", () => {
+    expect(campaignSummary({
+      planStart: toDate("2026-10-01"), planEnd: toDate("2026-10-31"),
+      budgetCeilingKrw: 9007199254740993n,
+      strategies: [{ budgetCeilingKrw: 9007199254740993n }, { budgetCeilingKrw: 1n }],
+      budgetLines: [], workItems: [],
+    })).toMatchObject({ allocatedStrategyKrw: "9007199254740994", unallocatedStrategyKrw: "-1", strategyOverBudget: true });
+  });
   it("겹치는 활동 기간을 더하지 않고 예산 항목만 한 번 더한다", () => {
     const result = campaignSummary(
       {
         planStart: toDate("2026-10-01"),
         planEnd: toDate("2026-10-10"),
         budgetCeilingKrw: 15n,
+        strategies: [],
         budgetLines: [{ plannedAmountKrw: 10n }, { plannedAmountKrw: 8n }],
         workItems: [
           {
